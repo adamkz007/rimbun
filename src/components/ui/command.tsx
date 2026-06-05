@@ -45,7 +45,7 @@ function CommandDialog({
   description?: string
   className?: string
   showCloseButton?: boolean
-  children: React.ReactNode
+  children: React.ComponentProps<typeof DialogContent>["children"]
 }) {
   return (
     <Dialog {...props}>
