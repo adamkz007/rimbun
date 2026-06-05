@@ -11,7 +11,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Users, ClipboardPen, LayoutDashboard, Settings } from "lucide-react";
-import { isModuleEnabled } from "@/lib/modules";
+import { hasAccess } from "@/lib/rbac";
 import type { ClinicSettings, StaffRole } from "@/types/database";
 
 type SearchResult = {
@@ -40,16 +40,27 @@ export function CommandPalette({
       path: "/clerking",
       label: "Clerking",
       icon: ClipboardPen,
-      visible:
-        ["doctor", "nurse"].includes(role) &&
-        isModuleEnabled(clinicSettings, "clerking"),
+      visible: hasAccess({
+        role,
+        clinicSettings,
+        access: {
+          roles: ["doctor", "nurse"],
+          module: "clerking",
+        },
+      }),
     },
     { path: "/patients", label: "Patients", icon: Users, visible: true },
     {
       path: "/settings",
       label: "Settings",
       icon: Settings,
-      visible: role === "admin",
+      visible: hasAccess({
+        role,
+        clinicSettings,
+        access: {
+          roles: ["admin"],
+        },
+      }),
     },
   ].filter((page) => page.visible);
 

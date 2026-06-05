@@ -1,7 +1,17 @@
 import { NextRequest } from "next/server";
+import { authorizeApiAccess } from "@/lib/auth";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
+  const access = await authorizeApiAccess({
+    roles: ["doctor", "nurse"],
+    module: "clerking",
+  });
+
+  if (access.error) {
+    return access.error;
+  }
+
   const query = request.nextUrl.searchParams.get("q");
   const limit = Math.min(parseInt(request.nextUrl.searchParams.get("limit") || "10"), 20);
 

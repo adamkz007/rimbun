@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Clock3, MapPin, Pencil, ShieldCheck } from "lucide-react";
+import { Building2, Clock3, MapPin, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,7 +58,8 @@ export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
-  const initialForm = useMemo(() => getInitialForm(clinic), [clinic]);
+  const clinicSnapshot = serializeClinicSnapshot(clinic);
+  const initialForm = useMemo(() => getInitialForm(clinic), [clinicSnapshot]);
   const [form, setForm] = useState<ClinicDetailsForm>(initialForm);
   const canEdit = role === "admin";
   const normalizedHours = useMemo(
@@ -324,4 +325,13 @@ function getInitialForm(clinic: ClinicDetails | null): ClinicDetailsForm {
     address: clinic?.address ?? "",
     openingHours: normalizeOpeningHours(clinic?.opening_hours),
   };
+}
+
+function serializeClinicSnapshot(clinic: ClinicDetails | null) {
+  return JSON.stringify({
+    name: clinic?.name ?? "",
+    registrationNumber: clinic?.registration_number ?? "",
+    address: clinic?.address ?? "",
+    openingHours: normalizeOpeningHours(clinic?.opening_hours),
+  });
 }

@@ -11,8 +11,7 @@ export const NOTE_SECTIONS: { value: NoteSection; label: string }[] = [
   { value: "chief_complaint", label: "Chief Complaint" },
   { value: "history", label: "History" },
   { value: "examination", label: "Examination" },
-  { value: "assessment", label: "Assessment" },
-  { value: "plan", label: "Plan" },
+  { value: "diagnosis", label: "Diagnosis" },
   { value: "general_notes", label: "General Notes" },
 ];
 

@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "netlify:status": "pnpm --package=netlify-cli dlx netlify status",
+    "netlify:link": "pnpm --package=netlify-cli dlx netlify link --name rimbun",
+    "netlify:deploy": "pnpm --package=netlify-cli dlx netlify deploy",
+    "netlify:deploy:prod": "pnpm --package=netlify-cli dlx netlify deploy --prod"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

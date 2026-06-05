@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { Pencil, Maximize2, Save, X } from "lucide-react";
 import { saveScratchpad } from "@/lib/actions/encounter-actions";
-import { useAutosave } from "@/lib/hooks/use-autosave";
 import dynamic from "next/dynamic";
 
 const TldrawCanvas = dynamic(() => import("./tldraw-canvas"), {
@@ -26,6 +25,12 @@ const TldrawCanvas = dynamic(() => import("./tldraw-canvas"), {
     </div>
   ),
 });
+
+type SaveStatus = "idle" | "unsaved" | "saving" | "saved" | "error";
+
+function serializeSnapshot(snapshot: Record<string, unknown> | null) {
+  return JSON.stringify(snapshot ?? null);
+}
 
 export function ScratchpadCanvas({
   encounterId,
@@ -38,32 +43,126 @@ export function ScratchpadCanvas({
 }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false);
-  const [currentSnapshot, setCurrentSnapshot] = useState<Record<string, unknown> | null>(initialData);
+  const [status, setStatus] = useState<SaveStatus>("idle");
+  const [hasHydrated, setHasHydrated] = useState(false);
+  const [initialSnapshot, setInitialSnapshot] = useState<Record<string, unknown> | null>(initialData);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const snapshotRef = useRef<Record<string, unknown> | null>(initialData);
+  const pendingSaveVersionRef = useRef(0);
+  const lastSavedVersionRef = useRef(0);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedSnapshotRef = useRef(serializeSnapshot(initialData));
+  const draftStorageKey = `clerking:draft:scratchpad:${encounterId}`;
 
   useEffect(() => {
-    setCurrentSnapshot(initialData);
-    snapshotRef.current = initialData;
-  }, [initialData, encounterId]);
+    const serverSerialized = serializeSnapshot(initialData);
+    lastSavedSnapshotRef.current = serverSerialized;
+    pendingSaveVersionRef.current = 0;
+    lastSavedVersionRef.current = 0;
+    setHasUnsavedChanges(false);
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+
+    if (disabled) {
+      snapshotRef.current = initialData;
+      setInitialSnapshot(initialData);
+      setStatus("idle");
+      setHasHydrated(true);
+      return;
+    }
+
+    const storedDraft = window.sessionStorage.getItem(draftStorageKey);
+    if (storedDraft) {
+      try {
+        const parsedDraft = JSON.parse(storedDraft) as Record<string, unknown>;
+        snapshotRef.current = parsedDraft;
+        setInitialSnapshot(parsedDraft);
+        const draftIsDirty = storedDraft !== serverSerialized;
+        setHasUnsavedChanges(draftIsDirty);
+        setStatus(draftIsDirty ? "unsaved" : "idle");
+      } catch {
+        window.sessionStorage.removeItem(draftStorageKey);
+        snapshotRef.current = initialData;
+        setInitialSnapshot(initialData);
+        setStatus("idle");
+      }
+    } else {
+      snapshotRef.current = initialData;
+      setInitialSnapshot(initialData);
+      setStatus("idle");
+    }
+
+    setHasHydrated(true);
+  }, [disabled, draftStorageKey, encounterId, initialData]);
+
+  const saveSnapshot = useCallback(async (versionToSave = pendingSaveVersionRef.current) => {
+    const snapshot = snapshotRef.current;
+    if (!snapshot || disabled) return;
+    if (versionToSave <= lastSavedVersionRef.current) return;
+
+    setStatus("saving");
+
+    try {
+      await saveScratchpad(encounterId, snapshot);
+      lastSavedVersionRef.current = versionToSave;
+      lastSavedSnapshotRef.current = serializeSnapshot(snapshot);
+      window.sessionStorage.removeItem(draftStorageKey);
+      setHasUnsavedChanges(false);
+      setStatus("saved");
+    } catch {
+      setStatus("error");
+    }
+  }, [disabled, draftStorageKey, encounterId]);
 
   const handleChange = useCallback((snapshot: Record<string, unknown>) => {
     snapshotRef.current = snapshot;
-    setCurrentSnapshot(snapshot);
-  }, []);
+    pendingSaveVersionRef.current += 1;
 
-  const { status, saveNow } = useAutosave(
-    currentSnapshot,
-    async (snapshot) => {
-      if (!snapshot) return;
-      await saveScratchpad(encounterId, snapshot);
-    },
-    { enabled: !disabled && !!currentSnapshot }
-  );
+    if (disabled) return;
+
+    window.sessionStorage.setItem(draftStorageKey, serializeSnapshot(snapshot));
+    setHasUnsavedChanges(true);
+    setStatus("unsaved");
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+    }
+
+    const versionToSave = pendingSaveVersionRef.current;
+    autosaveTimerRef.current = setTimeout(() => {
+      void saveSnapshot(versionToSave);
+    }, 20000);
+  }, [disabled, draftStorageKey, saveSnapshot]);
+
+  useEffect(() => {
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+
+      if (!disabled && hasUnsavedChanges) {
+        void saveSnapshot();
+      }
+    };
+  }, [disabled, hasUnsavedChanges, saveSnapshot]);
 
   const handleSave = useCallback(async () => {
     if (!snapshotRef.current || disabled) return;
-    await saveNow();
-  }, [disabled, saveNow]);
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+
+    if (pendingSaveVersionRef.current === 0) {
+      pendingSaveVersionRef.current = 1;
+    }
+
+    await saveSnapshot();
+  }, [disabled, saveSnapshot]);
 
   const requestClose = useCallback((open: boolean) => {
     if (open) {
@@ -98,11 +197,22 @@ export function ScratchpadCanvas({
         <div className="flex items-center gap-1">
           {status !== "idle" && (
             <Badge variant="outline" className="text-[10px] h-5">
-              {status === "saving" ? "Saving..." : status === "saved" ? "Saved" : "Error"}
+              {status === "unsaved"
+                ? "Unsaved"
+                : status === "saving"
+                  ? "Saving..."
+                  : status === "saved"
+                    ? "Saved"
+                    : "Save failed"}
             </Badge>
           )}
           {!disabled && (
-            <Button variant="ghost" size="sm" onClick={handleSave} disabled={status === "saving"}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSave}
+              disabled={status === "saving" || !hasUnsavedChanges}
+            >
               <Save className="h-3.5 w-3.5" />
             </Button>
           )}
@@ -121,11 +231,13 @@ export function ScratchpadCanvas({
                 <span className="sr-only">Close scratchpad</span>
               </Button>
               <div className="h-full w-full">
-                <TldrawCanvas
-                  initialSnapshot={currentSnapshot}
-                  onChange={handleChange}
-                  disabled={disabled}
-                />
+                {hasHydrated && (
+                  <TldrawCanvas
+                    initialSnapshot={initialSnapshot}
+                    onChange={handleChange}
+                    disabled={disabled}
+                  />
+                )}
               </div>
             </DialogContent>
           </Dialog>
@@ -161,11 +273,13 @@ export function ScratchpadCanvas({
       </CardHeader>
       <CardContent className="p-0">
         <div className="h-48 border-t">
-          <TldrawCanvas
-            initialSnapshot={currentSnapshot}
-            onChange={handleChange}
-            disabled={disabled}
-          />
+          {!isFullscreen && hasHydrated && (
+            <TldrawCanvas
+              initialSnapshot={initialSnapshot}
+              onChange={handleChange}
+              disabled={disabled}
+            />
+          )}
         </div>
       </CardContent>
     </Card>

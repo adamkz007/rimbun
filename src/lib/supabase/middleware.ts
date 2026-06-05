@@ -1,10 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-
-const PUBLIC_PATHS = new Set(["/", "/login"]);
+import { canAccessPathname, getAccessRuleForPath, isPublicPath } from "@/lib/rbac";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+  const pathname = request.nextUrl.pathname;
+  const accessRule = getAccessRuleForPath(pathname);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,15 +32,57 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    if (accessRule && !pathname.startsWith("/api/auth")) {
+      return redirectTo(request, "/login");
+    }
+
+    return supabaseResponse;
+  }
+
+  const { data: staff } = await supabase
+    .from("staff")
+    .select("role, is_active, clinics(settings)")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (!staff?.is_active) {
+    await supabase.auth.signOut();
+
+    if (pathname === "/login") {
+      return supabaseResponse;
+    }
+
+    return redirectTo(request, "/login");
+  }
+
+  if (pathname === "/login") {
+    return redirectTo(request, "/dashboard");
+  }
+
+  const clinic = Array.isArray(staff.clinics) ? staff.clinics[0] : staff.clinics;
+
   if (
-    !user &&
-    !PUBLIC_PATHS.has(request.nextUrl.pathname) &&
-    !request.nextUrl.pathname.startsWith("/api/auth")
+    accessRule &&
+    !canAccessPathname({
+      pathname,
+      role: staff.role,
+      clinicSettings: clinic?.settings,
+    })
   ) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return redirectTo(request, "/dashboard");
+  }
+
+  if (isPublicPath(pathname)) {
+    return supabaseResponse;
   }
 
   return supabaseResponse;
+}
+
+function redirectTo(request: NextRequest, pathname: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = "";
+  return NextResponse.redirect(url);
 }

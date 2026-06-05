@@ -260,7 +260,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {pastEncounters.map((encounter) => {
                   const patient = getFirstRelation(encounter.patients);
                   const doctor = getFirstRelation(encounter.staff);
@@ -269,24 +269,26 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   return (
                     <Link key={encounter.id} href={`/clerking/${encounter.id}`}>
                       <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-                        <CardContent className="flex flex-col gap-3 py-4 lg:flex-row lg:items-center lg:justify-between">
+                        <CardContent className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="min-w-0 space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="font-medium">{patient?.full_name ?? "Unknown patient"}</p>
+                              <p className="truncate text-sm font-medium">
+                                {patient?.full_name ?? "Unknown patient"}
+                              </p>
                               <Badge variant={encounter.status === "completed" ? "secondary" : "outline"}>
                                 {formatEncounterStatus(encounter.status)}
                               </Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                              MRN: {patient?.mrn ?? "N/A"} | Doctor: {doctorName}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              Encounter date{" "}
-                              {format(new Date(encounter.encounter_date), "dd MMM yyyy")} | Logged{" "}
-                              {format(new Date(encounter.created_at), "dd MMM yyyy, h:mm a")}
-                            </p>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                              <span>MRN {patient?.mrn ?? "N/A"}</span>
+                              <span>Doctor {doctorName}</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                              <span>{format(new Date(encounter.encounter_date), "dd MMM yyyy")}</span>
+                              <span>Logged {format(new Date(encounter.created_at), "dd MMM yyyy, h:mm a")}</span>
+                            </div>
                           </div>
-                          <span className="text-sm font-medium text-primary">Open encounter</span>
+                          <span className="shrink-0 text-xs font-medium text-primary">Open encounter</span>
                         </CardContent>
                       </Card>
                     </Link>

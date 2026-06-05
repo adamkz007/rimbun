@@ -47,3 +47,9 @@ docs/
 *.txt
 *.rst
 *.adoc
+
+# Local Netlify folder
+.netlify
+
+# Netlify edge build artifact
+deno.lock

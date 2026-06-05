@@ -196,7 +196,7 @@ export type Database = {
 
 export type StaffRole = "admin" | "doctor" | "nurse" | "receptionist";
 export type EncounterStatus = "in_progress" | "completed" | "amended";
-export type NoteSection = "chief_complaint" | "history" | "examination" | "assessment" | "plan" | "general_notes";
+export type NoteSection = "chief_complaint" | "history" | "examination" | "diagnosis" | "general_notes";
 export type DrugRoute = "oral" | "topical" | "injection" | "inhalation" | "sublingual" | "rectal" | "other";
 
 export type ClinicOpeningHoursDay = {

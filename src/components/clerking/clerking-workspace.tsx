@@ -10,16 +10,37 @@ import { Separator } from "@/components/ui/separator";
 import { Check, AlertTriangle } from "lucide-react";
 import { VitalsForm } from "./vitals-form";
 import { NotesEditor } from "./notes-editor";
+import { EncounterHistory } from "./encounter-history";
 import { DiagnosisPicker } from "./diagnosis-picker";
 import { PrescriptionForm } from "./prescription-form";
 import { ScratchpadCanvas } from "./scratchpad-canvas";
-import { completeEncounter } from "@/lib/actions/encounter-actions";
+import {
+  completeEncounter,
+  saveNote,
+  saveScratchpad,
+  saveVitals,
+} from "@/lib/actions/encounter-actions";
 import { NOTE_SECTIONS } from "@/lib/constants";
+import type { NoteSection } from "@/types/database";
 import { differenceInYears } from "date-fns";
 
 type EncounterWithRelations = any;
+type ClerkingTab = NoteSection | "prescription";
 
-export function ClerkingWorkspace({ encounter }: { encounter: EncounterWithRelations }) {
+const WORKSPACE_TABS: { value: ClerkingTab; label: string }[] = [
+  ...NOTE_SECTIONS.slice(0, 4),
+  { value: "prescription", label: "Prescription" },
+  ...NOTE_SECTIONS.slice(4),
+];
+const NOTE_DRAFT_SECTIONS = NOTE_SECTIONS.map((section) => section.value);
+
+export function ClerkingWorkspace({
+  encounter,
+  historyEncounters,
+}: {
+  encounter: EncounterWithRelations;
+  historyEncounters: any[];
+}) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("chief_complaint");
   const [completing, setCompleting] = useState(false);
@@ -35,8 +56,14 @@ export function ClerkingWorkspace({ encounter }: { encounter: EncounterWithRelat
   async function handleComplete() {
     if (!confirm("Complete this encounter? The record will be locked.")) return;
     setCompleting(true);
-    await completeEncounter(encounter.id);
-    router.push("/clerking");
+    try {
+      await persistEncounterDrafts(encounter.id);
+      await completeEncounter(encounter.id);
+      router.push("/clerking");
+    } catch (error) {
+      setCompleting(false);
+      alert(error instanceof Error ? error.message : "Unable to complete encounter.");
+    }
   }
 
   return (
@@ -45,15 +72,17 @@ export function ClerkingWorkspace({ encounter }: { encounter: EncounterWithRelat
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 overflow-hidden">
           <TabsList className="w-full justify-start">
-            {NOTE_SECTIONS.map((section) => (
-              <TabsTrigger key={section.value} value={section.value} className="text-xs">
-                {section.label}
+            {WORKSPACE_TABS.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value} className="text-xs">
+                {tab.label}
               </TabsTrigger>
             ))}
           </TabsList>
-          {NOTE_SECTIONS.map((section) => (
-            <TabsContent key={section.value} value={section.value} className="flex-1 overflow-auto mt-4">
-              {section.value === "assessment" ? (
+          {WORKSPACE_TABS.map((tab) => (
+            <TabsContent key={tab.value} value={tab.value} className="flex-1 overflow-auto mt-4">
+              {tab.value === "history" ? (
+                <EncounterHistory encounters={historyEncounters} />
+              ) : tab.value === "diagnosis" ? (
                 <div className="space-y-4">
                   <DiagnosisPicker
                     encounterId={encounter.id}
@@ -63,31 +92,22 @@ export function ClerkingWorkspace({ encounter }: { encounter: EncounterWithRelat
                   <Separator />
                   <NotesEditor
                     encounterId={encounter.id}
-                    section={section.value}
-                    initialContent={findNoteContent(encounter.encounter_notes, section.value)}
+                    section={tab.value}
+                    initialContent={findNoteContent(encounter.encounter_notes, tab.value)}
                     disabled={isCompleted}
                   />
                 </div>
-              ) : section.value === "plan" ? (
-                <div className="space-y-4">
-                  <NotesEditor
-                    encounterId={encounter.id}
-                    section={section.value}
-                    initialContent={findNoteContent(encounter.encounter_notes, section.value)}
-                    disabled={isCompleted}
-                  />
-                  <Separator />
-                  <PrescriptionForm
-                    encounterId={encounter.id}
-                    initialPrescriptions={encounter.encounter_prescriptions ?? []}
-                    disabled={isCompleted}
-                  />
-                </div>
+              ) : tab.value === "prescription" ? (
+                <PrescriptionForm
+                  encounterId={encounter.id}
+                  initialPrescriptions={encounter.encounter_prescriptions ?? []}
+                  disabled={isCompleted}
+                />
               ) : (
                 <NotesEditor
                   encounterId={encounter.id}
-                  section={section.value}
-                  initialContent={findNoteContent(encounter.encounter_notes, section.value)}
+                  section={tab.value}
+                  initialContent={findNoteContent(encounter.encounter_notes, tab.value)}
                   disabled={isCompleted}
                 />
               )}
@@ -149,7 +169,7 @@ export function ClerkingWorkspace({ encounter }: { encounter: EncounterWithRelat
   );
 }
 
-function findNoteContent(notes: any[], section: string): Record<string, unknown> | null {
+function findNoteContent(notes: any[], section: NoteSection): Record<string, unknown> | null {
   const note = notes?.find((n: any) => n.section === section);
   return note?.content ?? null;
 }
@@ -157,4 +177,59 @@ function findNoteContent(notes: any[], section: string): Record<string, unknown>
 function getSingleRelation<T>(relation: T | T[] | null | undefined): T | null {
   if (!relation) return null;
   return Array.isArray(relation) ? relation[0] ?? null : relation;
+}
+
+function parseStoredDraft<T>(storedDraft: string | null): T | null {
+  if (storedDraft === null) return null;
+
+  try {
+    return JSON.parse(storedDraft) as T;
+  } catch {
+    return null;
+  }
+}
+
+async function persistEncounterDrafts(encounterId: string) {
+  const pendingSaves: Promise<void>[] = [];
+
+  for (const section of NOTE_DRAFT_SECTIONS) {
+    const storageKey = `clerking:draft:note:${encounterId}:${section}`;
+    const draft = parseStoredDraft<Record<string, unknown>>(window.sessionStorage.getItem(storageKey));
+    if (!draft) {
+      window.sessionStorage.removeItem(storageKey);
+      continue;
+    }
+
+    pendingSaves.push(
+      saveNote(encounterId, section, draft).then(() => {
+        window.sessionStorage.removeItem(storageKey);
+      })
+    );
+  }
+
+  const vitalsStorageKey = `clerking:draft:vitals:${encounterId}`;
+  const vitalsDraft = parseStoredDraft<Record<string, number | null>>(window.sessionStorage.getItem(vitalsStorageKey));
+  if (vitalsDraft) {
+    pendingSaves.push(
+      saveVitals(encounterId, vitalsDraft).then(() => {
+        window.sessionStorage.removeItem(vitalsStorageKey);
+      })
+    );
+  } else {
+    window.sessionStorage.removeItem(vitalsStorageKey);
+  }
+
+  const scratchpadStorageKey = `clerking:draft:scratchpad:${encounterId}`;
+  const scratchpadDraft = parseStoredDraft<Record<string, unknown>>(window.sessionStorage.getItem(scratchpadStorageKey));
+  if (scratchpadDraft) {
+    pendingSaves.push(
+      saveScratchpad(encounterId, scratchpadDraft).then(() => {
+        window.sessionStorage.removeItem(scratchpadStorageKey);
+      })
+    );
+  } else {
+    window.sessionStorage.removeItem(scratchpadStorageKey);
+  }
+
+  await Promise.all(pendingSaves);
 }

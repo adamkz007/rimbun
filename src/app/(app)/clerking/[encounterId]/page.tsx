@@ -27,5 +27,20 @@ export default async function ClerkingPage({ params }: { params: Promise<{ encou
 
   if (!encounter) notFound();
 
-  return <ClerkingWorkspace encounter={encounter} />;
+  const { data: historyEncounters } = await supabase
+    .from("encounters")
+    .select(`
+      id,
+      status,
+      created_at,
+      encounter_date,
+      staff:doctor_id(full_name),
+      encounter_diagnoses(id, icd10_code, icd10_description, diagnosis_type),
+      encounter_prescriptions(id, drug_name, dosage, frequency, duration, route)
+    `)
+    .eq("patient_id", encounter.patient_id)
+    .neq("id", encounterId)
+    .order("encounter_date", { ascending: false });
+
+  return <ClerkingWorkspace encounter={encounter} historyEncounters={historyEncounters ?? []} />;
 }

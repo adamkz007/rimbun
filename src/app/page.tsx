@@ -1,17 +1,18 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  Check,
   ClipboardPenLine,
+  FileStack,
+  HandHelping,
+  HeartHandshake,
   Layers3,
+  MousePointerClick,
   ShieldCheck,
   Sparkles,
   Stethoscope,
-  TimerReset,
   type LucideIcon,
 } from "lucide-react";
 import { RimbunMark } from "@/components/branding/rimbun-logo";
-import { OutcomeLottie } from "@/components/landing/outcome-lottie";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -40,34 +41,31 @@ const featureCards: Array<{
   },
 ];
 
-const workflowSteps = [
-  "Open the patient, not a blank page.",
-  "Capture the consult in one steady flow.",
-  "Let autosave take care of the background work.",
-];
-
 const proofPoints = [
   { value: "2s", label: "Quiet autosave in the background." },
   { value: "1", label: "Workspace for the full consultation." },
   { value: "24/7", label: "Cloud access for the whole clinic team." },
 ];
 
-const outcomes = [
+const outcomes: Array<{
+  title: string;
+  icon: LucideIcon;
+}> = [
   {
     title: "Less clicking during consults",
-    animation: "focus" as const,
+    icon: MousePointerClick,
   },
   {
     title: "Smoother handoff between team members",
-    animation: "handoff" as const,
+    icon: HandHelping,
   },
   {
     title: "Clearer records across repeat visits",
-    animation: "records" as const,
+    icon: FileStack,
   },
   {
     title: "A calmer day for staff and patients",
-    animation: "calm" as const,
+    icon: HeartHandshake,
   },
 ];
 
@@ -102,12 +100,6 @@ export default function Home() {
             </Link>
 
             <div className="flex items-center gap-3">
-              <Link
-                href="#features"
-                className="hidden text-sm text-[#d5e8e3]/78 transition hover:text-white sm:inline"
-              >
-                Why it works
-              </Link>
               <Link
                 href="/login"
                 className={cn(
@@ -144,7 +136,7 @@ export default function Home() {
                   <ArrowRight className="size-4" />
                 </Link>
                 <Link
-                  href="#product"
+                  href="#features"
                   className={cn(
                     buttonVariants({ variant: "ghost", size: "lg" }),
                     "h-12 rounded-full border border-white/14 bg-white/6 px-5 text-[#f6f0e8] hover:bg-white/12 hover:text-white"
@@ -194,7 +186,7 @@ export default function Home() {
                           Chief complaint: dry cough, worse at night for 5 days.
                         </div>
                         <div className="rounded-2xl bg-[#f8f4ee] p-3">
-                          Assessment suggests uncomplicated URTI. No red flags on exam.
+                          Diagnosis: uncomplicated URTI. No red flags on examination.
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <span className="rounded-full bg-[#efe8ff] px-3 py-1 text-xs text-[#6a52f2]">
@@ -285,116 +277,6 @@ export default function Home() {
         </div>
       </section>
 
-      <section
-        id="product"
-        className="border-y border-[#ddd4ca] bg-[linear-gradient(180deg,rgba(255,255,255,0.24),rgba(255,255,255,0.54))]"
-      >
-        <div className="mx-auto grid w-full max-w-7xl gap-12 px-6 py-24 sm:px-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)] lg:px-12 lg:py-32">
-          <div className="max-w-xl">
-            <SectionEyebrow>Inside The Flow</SectionEyebrow>
-            <h2 className="mt-5 text-4xl leading-[1.1] font-semibold tracking-[-0.04em] text-balance sm:text-5xl">
-              From patient to plan, in one flow.
-            </h2>
-            <div className="mt-10 space-y-4">
-              {workflowSteps.map((step) => (
-                <div
-                  key={step}
-                  className="flex items-start gap-3 rounded-2xl border border-[#ddd4ca] bg-white/85 px-4 py-4"
-                >
-                  <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#0f5a53] text-white">
-                    <Check className="size-3.5" />
-                  </span>
-                  <p className="text-base leading-7 text-[#395652]">{step}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-10 rounded-[2rem] bg-[#7b68ff] px-7 py-8 text-white shadow-[0_24px_70px_rgba(123,104,255,0.26)]">
-              <p className="text-[0.6875rem] uppercase tracking-[0.28em] text-white/68">
-                Made to keep up
-              </p>
-              <p className="mt-4 text-[1.5rem] leading-[1.25] font-semibold tracking-[-0.03em]">
-                Clear enough for records, light enough for real conversations.
-              </p>
-              <div className="mt-7 inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-1.5 text-sm">
-                <TimerReset className="size-4" />
-                The chart keeps up while care is happening
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[2.2rem] border border-[#ddd4ca] bg-white/88 p-4 shadow-[0_30px_80px_rgba(20,54,50,0.08)]">
-            <div className="rounded-[1.8rem] bg-[#f7f2eb] p-4">
-              <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-                <div className="rounded-[1.4rem] bg-[#0f5a53] p-4 text-[#f5efe7]">
-                  <p className="text-xs uppercase tracking-[0.22em] text-white/64">
-                    Active queue
-                  </p>
-                  <div className="mt-4 space-y-3">
-                    <div className="rounded-2xl bg-white/8 px-4 py-3">
-                      <p className="font-medium">Nur Imani</p>
-                      <p className="text-sm text-white/70">Review BP medication</p>
-                    </div>
-                    <div className="rounded-2xl bg-white/8 px-4 py-3">
-                      <p className="font-medium">Faris Daniel</p>
-                      <p className="text-sm text-white/70">Fever and sore throat</p>
-                    </div>
-                    <div className="rounded-2xl bg-[#60d9c6]/16 px-4 py-3">
-                      <p className="font-medium">Zulaikha Aziz</p>
-                      <p className="text-sm text-[#d9fcf5]">Seen by Dr. Nadia now</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="rounded-[1.4rem] bg-white p-4 shadow-sm">
-                    <p className="text-xs uppercase tracking-[0.22em] text-[#6a8380]">
-                      Consultation canvas
-                    </p>
-                    <div className="mt-4 rounded-[1.2rem] border border-[#ece4da] bg-[#fbf8f3] p-4">
-                      <div className="flex gap-2">
-                        <span className="rounded-full bg-[#efe8ff] px-3 py-1 text-xs text-[#6a52f2]">
-                          Notes
-                        </span>
-                        <span className="rounded-full bg-[#daf6f1] px-3 py-1 text-xs text-[#0f5a53]">
-                          Diagram
-                        </span>
-                      </div>
-                      <div className="mt-4 space-y-3 text-sm text-[#45615d]">
-                        <div className="h-2.5 w-3/4 rounded-full bg-[#dcd4ca]" />
-                        <div className="h-2.5 w-full rounded-full bg-[#e6dfd5]" />
-                        <div className="h-2.5 w-5/6 rounded-full bg-[#dcd4ca]" />
-                      </div>
-                      <div className="mt-6 rounded-[1rem] border border-dashed border-[#cebfae] px-4 py-6 text-center text-sm text-[#6d817d]">
-                        Freehand sketch area for symptoms, exam notes, or patient education
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="rounded-[1.4rem] bg-[#f1ebff] p-4">
-                      <p className="text-xs uppercase tracking-[0.22em] text-[#765ff0]">
-                        Diagnosis assist
-                      </p>
-                      <p className="mt-3 text-base leading-7 text-[#4c4380]">
-                        Useful coding suggestions appear right when they are needed.
-                      </p>
-                    </div>
-                    <div className="rounded-[1.4rem] bg-[#daf6f1] p-4">
-                      <p className="text-xs uppercase tracking-[0.22em] text-[#0f5a53]">
-                        Medication support
-                      </p>
-                      <p className="mt-3 text-base leading-7 text-[#27514c]">
-                        Common medicines and dosing details stay close to prescribing.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section className="mx-auto w-full max-w-7xl px-6 py-24 sm:px-10 lg:px-12 lg:py-32">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(320px,1.15fr)]">
           <div className="rounded-[2rem] bg-[#0f5a53] px-8 py-10 text-[#f6f0e8]">
@@ -409,28 +291,33 @@ export default function Home() {
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            {outcomes.map((outcome, index) => (
-              <div
-                key={outcome.title}
-                className={cn(
-                  "group rounded-[2rem] border px-6 py-7 transition-shadow duration-300 hover:shadow-[0_20px_50px_rgba(20,54,50,0.08)]",
-                  index % 2 === 0
-                    ? "border-[#ddd4ca] bg-white/86"
-                    : "border-transparent bg-[#efe8ff]"
-                )}
-              >
-                <OutcomeLottie
-                  animation={outcome.animation}
-                  className="mb-5 h-32 w-full overflow-hidden rounded-[1.4rem] border border-[#e7ddd2]/60 bg-white/50 transition-transform duration-300 group-hover:scale-[1.02]"
-                />
-                <p className="text-[0.6875rem] uppercase tracking-[0.28em] text-[#6a8380]">
-                  Outcome {index + 1}
-                </p>
-                <p className="mt-4 text-[1.375rem] leading-[1.3] font-semibold tracking-[-0.03em] text-[#163936]">
-                  {outcome.title}
-                </p>
-              </div>
-            ))}
+            {outcomes.map((outcome, index) => {
+              const Icon = outcome.icon;
+
+              return (
+                <div
+                  key={outcome.title}
+                  className={cn(
+                    "group rounded-[2rem] border px-6 py-7 transition-shadow duration-300 hover:shadow-[0_20px_50px_rgba(20,54,50,0.08)]",
+                    index % 2 === 0
+                      ? "border-[#ddd4ca] bg-white/86"
+                      : "border-transparent bg-[#efe8ff]"
+                  )}
+                >
+                  <div className="mb-5 flex h-32 w-full items-center justify-center overflow-hidden rounded-[1.4rem] border border-[#e7ddd2]/60 bg-white/50 transition-transform duration-300 group-hover:scale-[1.02]">
+                    <div className="flex size-20 items-center justify-center rounded-[1.6rem] bg-[#0f5a53] text-white shadow-[0_16px_40px_rgba(15,90,83,0.18)] transition-transform duration-300 group-hover:-translate-y-1">
+                      <Icon className="size-9" />
+                    </div>
+                  </div>
+                  <p className="text-[0.6875rem] uppercase tracking-[0.28em] text-[#6a8380]">
+                    Outcome {index + 1}
+                  </p>
+                  <p className="mt-4 text-[1.375rem] leading-[1.3] font-semibold tracking-[-0.03em] text-[#163936]">
+                    {outcome.title}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -459,7 +346,7 @@ export default function Home() {
               Sign in to Rimbun
             </Link>
             <Link
-              href="mailto:hello@rimbun.app"
+              href="mailto:hello@rimbun.app?subject=I%27d%20like%20to%20request%20a%20demo%20for%20Rimbun"
               className={cn(
                 buttonVariants({ variant: "outline", size: "lg" }),
                 "h-12 rounded-full border-white/14 bg-white/6 px-5 text-[#f6f0e8] hover:bg-white/12 hover:text-white"

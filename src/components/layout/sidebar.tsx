@@ -17,8 +17,9 @@ import {
 } from "lucide-react";
 import { RimbunMark } from "@/components/branding/rimbun-logo";
 import { ClinicDetailsCard } from "@/components/layout/clinic-details-card";
+import { hasAccess } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
-import { isModuleEnabled, type AppModule } from "@/lib/modules";
+import type { AppModule } from "@/lib/modules";
 import type { ClinicOpeningHours, ClinicSettings, StaffRole } from "@/types/database";
 
 type NavItem = {
@@ -58,7 +59,14 @@ export function Sidebar({
   const clinicSettings = clinic?.settings;
 
   const visibleItems = NAV_ITEMS.filter((item) =>
-    item.roles.includes(role) && (!item.module || isModuleEnabled(clinicSettings, item.module))
+    hasAccess({
+      role,
+      clinicSettings,
+      access: {
+        roles: item.roles,
+        module: item.module,
+      },
+    })
   );
 
   const nav = (

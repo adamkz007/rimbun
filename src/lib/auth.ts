@@ -1,34 +1,19 @@
 import { redirect } from "next/navigation";
-import { getCurrentStaff, type CurrentStaff } from "@/lib/actions/auth-actions";
+import { getCurrentStaff } from "@/lib/actions/auth-actions";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { isModuleEnabled, type AppModule } from "@/lib/modules";
-import type { StaffRole } from "@/types/database";
-
-type AccessOptions = {
-  roles?: StaffRole[];
-  module?: AppModule;
-};
-
-function hasRoleAccess(staff: CurrentStaff, roles?: StaffRole[]) {
-  if (!roles?.length) {
-    return true;
-  }
-
-  return roles.includes(staff.role);
-}
-
-function hasModuleAccess(staff: CurrentStaff, module?: AppModule) {
-  if (!module) {
-    return true;
-  }
-
-  return isModuleEnabled(staff.clinics?.settings, module);
-}
+import {
+  hasAccess,
+  hasModuleAccess,
+  hasRoleAccess,
+  type AccessOptions,
+} from "@/lib/rbac";
 
 export async function requireAuthenticatedStaff() {
   const staff = await getCurrentStaff();
 
   if (!staff) {
+    const supabase = await getSupabaseServerClient();
+    await supabase.auth.signOut();
     redirect("/login");
   }
 
@@ -44,7 +29,13 @@ export async function requireAuthenticatedStaff() {
 export async function requirePageAccess(options: AccessOptions = {}) {
   const staff = await requireAuthenticatedStaff();
 
-  if (!hasRoleAccess(staff, options.roles) || !hasModuleAccess(staff, options.module)) {
+  if (
+    !hasAccess({
+      role: staff.role,
+      clinicSettings: staff.clinics?.settings,
+      access: options,
+    })
+  ) {
     redirect("/dashboard");
   }
 
@@ -62,13 +53,59 @@ export async function requireActionAccess(options: AccessOptions = {}) {
     throw new Error("Your staff account is inactive.");
   }
 
-  if (!hasRoleAccess(staff, options.roles)) {
+  if (!hasRoleAccess(staff.role, options.roles)) {
     throw new Error("You are not authorized to perform this action.");
   }
 
-  if (!hasModuleAccess(staff, options.module)) {
+  if (!hasModuleAccess(staff.clinics?.settings, options.module)) {
     throw new Error("This module is disabled for the current clinic.");
   }
 
   return staff;
+}
+
+export async function authorizeApiAccess(options: AccessOptions = {}) {
+  const staff = await getCurrentStaff();
+
+  if (!staff) {
+    return {
+      staff: null,
+      error: Response.json({ error: "Not authenticated" }, { status: 401 }),
+    };
+  }
+
+  if (!staff.is_active) {
+    const supabase = await getSupabaseServerClient();
+    await supabase.auth.signOut();
+
+    return {
+      staff: null,
+      error: Response.json(
+        { error: "Your staff account is inactive. Contact your clinic admin." },
+        { status: 403 }
+      ),
+    };
+  }
+
+  if (!hasRoleAccess(staff.role, options.roles)) {
+    return {
+      staff: null,
+      error: Response.json(
+        { error: "You are not authorized to access this resource." },
+        { status: 403 }
+      ),
+    };
+  }
+
+  if (!hasModuleAccess(staff.clinics?.settings, options.module)) {
+    return {
+      staff: null,
+      error: Response.json(
+        { error: "This module is disabled for the current clinic." },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return { staff, error: null };
 }
