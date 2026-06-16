@@ -21,7 +21,7 @@ import { isModuleVisibleInNav } from "@/lib/modules";
 import { hasAccess } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import type { AppModule } from "@/lib/modules";
-import type { ClinicOpeningHours, ClinicSettings, StaffRole } from "@/types/database";
+import type { ClinicSettings, StaffRole } from "@/types/database";
 
 type NavItem = {
   href: string;
@@ -50,7 +50,6 @@ export function Sidebar({
     name: string;
     address: string | null;
     registration_number: string | null;
-    opening_hours: ClinicOpeningHours;
     settings: ClinicSettings;
   } | null;
 }) {

@@ -10,7 +10,6 @@ export type Database = {
           phone: string | null;
           registration_number: string | null;
           logo_url: string | null;
-          opening_hours: ClinicOpeningHours;
           settings: ClinicSettings;
           created_at: string;
           updated_at: string;
@@ -242,22 +241,6 @@ export type QueueArrivalType = "walk_in" | "appointment";
 export type EncounterStatus = "in_progress" | "completed" | "amended";
 export type NoteSection = "chief_complaint" | "history" | "examination" | "diagnosis" | "general_notes";
 export type DrugRoute = "oral" | "topical" | "injection" | "inhalation" | "sublingual" | "rectal" | "other";
-
-export type ClinicOpeningHoursDay = {
-  isOpen: boolean;
-  open: string;
-  close: string;
-};
-
-export type ClinicOpeningHours = {
-  monday: ClinicOpeningHoursDay;
-  tuesday: ClinicOpeningHoursDay;
-  wednesday: ClinicOpeningHoursDay;
-  thursday: ClinicOpeningHoursDay;
-  friday: ClinicOpeningHoursDay;
-  saturday: ClinicOpeningHoursDay;
-  sunday: ClinicOpeningHoursDay;
-};
 
 export type ClinicSettings = {
   modules?: {

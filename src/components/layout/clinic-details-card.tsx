@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Clock3, MapPin, Pencil } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Building2, MapPin, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,21 +22,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { updateClinicDetails } from "@/lib/actions/clinic-actions";
-import {
-  CLINIC_DAY_LABELS,
-  CLINIC_DAY_ORDER,
-  formatHoursRange,
-  getOpenStatus,
-  normalizeOpeningHours,
-} from "@/lib/clinic-details";
-import { cn } from "@/lib/utils";
-import type { ClinicOpeningHours, StaffRole } from "@/types/database";
+import type { StaffRole } from "@/types/database";
 
 type ClinicDetails = {
   name: string;
   address: string | null;
   registration_number: string | null;
-  opening_hours: ClinicOpeningHours;
 };
 
 type ClinicDetailsCardProps = {
@@ -49,7 +39,6 @@ type ClinicDetailsForm = {
   name: string;
   registrationNumber: string;
   address: string;
-  openingHours: ClinicOpeningHours;
 };
 
 export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
@@ -57,16 +46,10 @@ export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
   const [isPending, startTransition] = useTransition();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [now, setNow] = useState(() => new Date());
   const clinicSnapshot = serializeClinicSnapshot(clinic);
   const initialForm = useMemo(() => getInitialForm(clinic), [clinicSnapshot]);
   const [form, setForm] = useState<ClinicDetailsForm>(initialForm);
   const canEdit = role === "admin";
-  const normalizedHours = useMemo(
-    () => normalizeOpeningHours(clinic?.opening_hours),
-    [clinic?.opening_hours]
-  );
-  const openStatus = useMemo(() => getOpenStatus(normalizedHours, now), [normalizedHours, now]);
 
   useEffect(() => {
     if (!isDialogOpen) {
@@ -75,30 +58,8 @@ export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
     }
   }, [initialForm, isDialogOpen]);
 
-  useEffect(() => {
-    const intervalId = window.setInterval(() => setNow(new Date()), 60_000);
-    return () => window.clearInterval(intervalId);
-  }, []);
-
   if (!clinic) {
     return null;
-  }
-
-  function updateDayField(
-    day: keyof ClinicOpeningHours,
-    field: "isOpen" | "open" | "close",
-    value: boolean | string
-  ) {
-    setForm((current) => ({
-      ...current,
-      openingHours: {
-        ...current.openingHours,
-        [day]: {
-          ...current.openingHours[day],
-          [field]: value,
-        },
-      },
-    }));
   }
 
   function handleSave() {
@@ -109,7 +70,6 @@ export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
         name: form.name,
         registrationNumber: form.registrationNumber,
         address: form.address,
-        openingHours: form.openingHours,
       });
 
       setMessage(result.message);
@@ -127,11 +87,6 @@ export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
         <CardHeader className="gap-2">
           <div className="flex items-start justify-between gap-2">
             <CardTitle className="text-sm">{clinic.name}</CardTitle>
-            {openStatus.isOpenNow ? (
-              <Badge variant="secondary" className="shrink-0">
-                Open Now
-              </Badge>
-            ) : null}
           </div>
           {canEdit ? (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -193,62 +148,6 @@ export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
                     />
                   </div>
 
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm font-medium">Opening Hours</p>
-                      <p className="text-xs text-muted-foreground">
-                        Use 24-hour time in HH:MM format.
-                      </p>
-                    </div>
-                    <div className="space-y-3">
-                      {CLINIC_DAY_ORDER.map((day) => {
-                        const dayHours = form.openingHours[day];
-
-                        return (
-                          <div
-                            key={day}
-                            className="grid gap-3 rounded-lg border p-3 md:grid-cols-[76px_1fr_1fr]"
-                          >
-                            <label className="flex items-center gap-2 text-sm font-medium">
-                              <input
-                                type="checkbox"
-                                checked={dayHours.isOpen}
-                                onChange={(event) =>
-                                  updateDayField(day, "isOpen", event.target.checked)
-                                }
-                              />
-                              {CLINIC_DAY_LABELS[day]}
-                            </label>
-                            <div className="space-y-2">
-                              <Label htmlFor={`open-${day}`}>Open</Label>
-                              <Input
-                                id={`open-${day}`}
-                                type="time"
-                                value={dayHours.open}
-                                disabled={!dayHours.isOpen}
-                                onChange={(event) =>
-                                  updateDayField(day, "open", event.target.value)
-                                }
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor={`close-${day}`}>Close</Label>
-                              <Input
-                                id={`close-${day}`}
-                                type="time"
-                                value={dayHours.close}
-                                disabled={!dayHours.isOpen}
-                                onChange={(event) =>
-                                  updateDayField(day, "close", event.target.value)
-                                }
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
                   {message ? (
                     <div className="rounded-lg border bg-muted/40 p-3 text-sm">
                       {message}
@@ -280,38 +179,6 @@ export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
               {clinic.address?.trim() || "Address not set"}
             </span>
           </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Clock3 className="h-3.5 w-3.5 shrink-0" />
-              <span>
-                Today ({CLINIC_DAY_LABELS[openStatus.today]}):{" "}
-                <span className="text-foreground">
-                  {formatHoursRange(openStatus.todayHours)}
-                </span>
-              </span>
-            </div>
-
-            <div className="space-y-1 rounded-lg border bg-background/70 p-2">
-              {CLINIC_DAY_ORDER.map((day) => {
-                const isToday = day === openStatus.today;
-                return (
-                  <div
-                    key={day}
-                    className={cn(
-                      "flex items-center justify-between gap-3",
-                      isToday ? "text-foreground" : "text-muted-foreground"
-                    )}
-                  >
-                    <span className={cn("font-medium", !isToday && "font-normal")}>
-                      {CLINIC_DAY_LABELS[day]}
-                    </span>
-                    <span>{formatHoursRange(normalizedHours[day])}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
@@ -323,7 +190,6 @@ function getInitialForm(clinic: ClinicDetails | null): ClinicDetailsForm {
     name: clinic?.name ?? "",
     registrationNumber: clinic?.registration_number ?? "",
     address: clinic?.address ?? "",
-    openingHours: normalizeOpeningHours(clinic?.opening_hours),
   };
 }
 
@@ -332,6 +198,5 @@ function serializeClinicSnapshot(clinic: ClinicDetails | null) {
     name: clinic?.name ?? "",
     registrationNumber: clinic?.registration_number ?? "",
     address: clinic?.address ?? "",
-    openingHours: normalizeOpeningHours(clinic?.opening_hours),
   });
 }

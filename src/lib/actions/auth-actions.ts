@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import type { ClinicOpeningHours, ClinicSettings, StaffRole } from "@/types/database";
+import type { ClinicSettings, StaffRole } from "@/types/database";
 
 export type CurrentStaff = {
   id: string;
@@ -19,7 +19,6 @@ export type CurrentStaff = {
     slug: string;
     address: string | null;
     registration_number: string | null;
-    opening_hours: ClinicOpeningHours;
     settings: ClinicSettings;
   } | null;
 };
@@ -71,7 +70,7 @@ export async function getCurrentStaff(): Promise<CurrentStaff | null> {
 
   const { data: staff } = await supabase
     .from("staff")
-    .select("*, clinics(id, name, slug, address, registration_number, opening_hours, settings)")
+    .select("*, clinics(id, name, slug, address, registration_number, settings)")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
