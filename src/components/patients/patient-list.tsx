@@ -24,6 +24,7 @@ import {
 import Link from "next/link";
 import { createEncounter } from "@/lib/actions/encounter-actions";
 import { registerPatient } from "@/lib/actions/patient-actions";
+import { toast } from "@/lib/toast";
 import { PatientFormFields } from "@/components/patients/patient-form-fields";
 import {
   EMPTY_PATIENT_FORM_VALUES,
@@ -90,11 +91,13 @@ export function PatientList({
 
     try {
       const encounter = await createEncounter(patientId);
+      toast.success("Encounter started", "Opening the clerking workspace.");
       router.push(`/clerking/${encounter.id}`);
     } catch (error) {
-      setListMessage(
-        error instanceof Error ? error.message : "Unable to start the encounter."
-      );
+      const message =
+        error instanceof Error ? error.message : "Unable to start the encounter.";
+      setListMessage(message);
+      toast.error("Unable to start encounter", message);
       setStartingEncounter(null);
     }
   }
@@ -113,7 +116,10 @@ export function PatientList({
       if (result.success) {
         setRegisterOpen(false);
         setForm(EMPTY_PATIENT_FORM_VALUES);
+        toast.success("Patient registered", result.message);
         router.refresh();
+      } else if (result.message) {
+        toast.error("Registration failed", result.message);
       }
     });
   }

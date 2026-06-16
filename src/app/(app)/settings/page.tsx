@@ -58,7 +58,7 @@ export default async function SettingsPage() {
             <CardHeader>
               <CardTitle>Module Access</CardTitle>
               <CardDescription>
-                Sidebar visibility now follows the clinic module flags.
+                Sidebar visibility follows clinic module flags for implemented modules only.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">

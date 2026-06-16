@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAutosave } from "@/lib/hooks/use-autosave";
 import { useLocalDraft } from "@/lib/hooks/use-local-draft";
 import { saveVitals } from "@/lib/actions/encounter-actions";
+import { toast } from "@/lib/toast";
 import { VITAL_FIELDS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
@@ -73,7 +74,12 @@ export function VitalsForm({
         <CardTitle className="text-sm">Vitals</CardTitle>
         <div className="flex items-center gap-1">
           {status !== "idle" && (
-            <Badge variant="outline" className="text-[10px] h-5">
+            <Badge
+              variant="outline"
+              className="text-[10px] h-5"
+              role="status"
+              aria-live="polite"
+            >
               {status === "unsaved"
                 ? "Unsaved"
                 : status === "saving"
@@ -87,8 +93,12 @@ export function VitalsForm({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => void saveNow()}
+              onClick={async () => {
+                await saveNow();
+                toast.success("Vitals saved");
+              }}
               disabled={status === "saving" || !hasUnsavedChanges}
+              aria-label="Save vitals"
             >
               <Save className="h-3.5 w-3.5" />
             </Button>

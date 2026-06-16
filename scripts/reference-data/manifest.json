@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-06-08T01:36:47.329Z",
+  "icd10": {
+    "sourceUrl": "https://ftp.cdc.gov/pub/health_statistics/nchs/publications/ICD10CM/2026/icd10cm-Code%20Descriptions-2026.zip",
+    "rowCount": 74719
+  },
+  "drugs": {
+    "sourceUrl": "https://storage.data.gov.my/healthcare/pharmaceutical_products.csv",
+    "rowCount": 6301
+  }
+}

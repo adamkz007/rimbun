@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { RimbunMark } from "@/components/branding/rimbun-logo";
 import { ClinicDetailsCard } from "@/components/layout/clinic-details-card";
+import { isModuleVisibleInNav } from "@/lib/modules";
 import { hasAccess } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import type { AppModule } from "@/lib/modules";
@@ -58,16 +59,20 @@ export function Sidebar({
   const clinicName = clinic?.name ?? "Clinic";
   const clinicSettings = clinic?.settings;
 
-  const visibleItems = NAV_ITEMS.filter((item) =>
-    hasAccess({
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (item.module && !isModuleVisibleInNav(clinicSettings, item.module)) {
+      return false;
+    }
+
+    return hasAccess({
       role,
       clinicSettings,
       access: {
         roles: item.roles,
         module: item.module,
       },
-    })
-  );
+    });
+  });
 
   const nav = (
     <>
@@ -76,7 +81,12 @@ export function Sidebar({
           <RimbunMark className="h-5 w-5 text-primary" />
           <span className="font-semibold">Rimbun</span>
         </Link>
-        <button className="ml-auto md:hidden" onClick={() => setMobileOpen(false)}>
+        <button
+          type="button"
+          className="ml-auto md:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close navigation menu"
+        >
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -112,8 +122,11 @@ export function Sidebar({
     <>
       {/* Mobile trigger */}
       <button
+        type="button"
         className="fixed top-3 left-3 z-50 md:hidden rounded-md border bg-background p-2"
         onClick={() => setMobileOpen(true)}
+        aria-label="Open navigation menu"
+        aria-expanded={mobileOpen}
       >
         <Menu className="h-5 w-5" />
       </button>

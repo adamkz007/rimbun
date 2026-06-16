@@ -25,7 +25,7 @@ begin
     '{
       "modules": {
         "clerking": true,
-        "queue": false,
+        "queue": true,
         "billing": false,
         "dispensary": false,
         "attendance": false

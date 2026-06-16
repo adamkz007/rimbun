@@ -5,7 +5,7 @@ import { requirePageAccess } from "@/lib/auth";
 
 export default async function ClerkingPage({ params }: { params: Promise<{ encounterId: string }> }) {
   const { encounterId } = await params;
-  await requirePageAccess({
+  const staff = await requirePageAccess({
     roles: ["doctor", "nurse"],
     module: "clerking",
   });
@@ -16,6 +16,10 @@ export default async function ClerkingPage({ params }: { params: Promise<{ encou
     .select(`
       *,
       patients(id, full_name, mrn, date_of_birth, gender, allergies, phone),
+      doctor:doctor_id(id, full_name),
+      completed_by_staff:completed_by(full_name),
+      amendment_started_by_staff:amendment_started_by(full_name),
+      last_amended_by_staff:last_amended_by(full_name),
       encounter_vitals(*),
       encounter_notes(*),
       encounter_diagnoses(*),
@@ -42,5 +46,15 @@ export default async function ClerkingPage({ params }: { params: Promise<{ encou
     .neq("id", encounterId)
     .order("encounter_date", { ascending: false });
 
-  return <ClerkingWorkspace encounter={encounter} historyEncounters={historyEncounters ?? []} />;
+  return (
+    <ClerkingWorkspace
+      encounter={encounter}
+      historyEncounters={historyEncounters ?? []}
+      currentStaff={{
+        id: staff.id,
+        fullName: staff.full_name,
+        role: staff.role,
+      }}
+    />
+  );
 }

@@ -192,9 +192,6 @@ export default function Home() {
                           <span className="rounded-full bg-[#efe8ff] px-3 py-1 text-xs text-[#6a52f2]">
                             ICD-10 assisted
                           </span>
-                          <span className="rounded-full bg-[#daf6f1] px-3 py-1 text-xs text-[#0f5a53]">
-                            Autosaving
-                          </span>
                         </div>
                       </div>
                     </div>

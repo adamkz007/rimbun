@@ -199,9 +199,9 @@ export default async function PatientProfilePage({
                         </div>
                       </div>
                       <Badge
-                        variant={enc.status === "completed" ? "secondary" : "default"}
+                        variant={enc.status === "in_progress" ? "default" : "secondary"}
                       >
-                        {enc.status === "in_progress" ? "In Progress" : "Completed"}
+                        {formatEncounterStatus(enc.status)}
                       </Badge>
                     </div>
                   </Link>
@@ -250,4 +250,11 @@ function ListDetail({
       )}
     </div>
   );
+}
+
+function formatEncounterStatus(status: PatientEncounter["status"]) {
+  return status
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }

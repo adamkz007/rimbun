@@ -7,6 +7,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { useAutosave } from "@/lib/hooks/use-autosave";
 import { useLocalDraft } from "@/lib/hooks/use-local-draft";
 import { saveNote } from "@/lib/actions/encounter-actions";
+import { toast } from "@/lib/toast";
 import type { NoteSection } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -87,13 +88,14 @@ export function NotesEditor({
     }
   );
 
-  const handleSaveCurrentContent = useCallback(() => {
+  const handleSaveCurrentContent = useCallback(async () => {
     const latestContent = (editor?.getJSON() as Record<string, unknown> | undefined) ?? content;
     if (!latestContent) return Promise.resolve();
 
     setContent(latestContent);
-    return saveNow(latestContent);
-  }, [content, editor, saveNow, setContent]);
+    await saveNow(latestContent);
+    toast.success("Note saved", section.replaceAll("_", " "));
+  }, [content, editor, saveNow, section, setContent]);
 
   return (
     <div className="rounded-md border">
@@ -103,7 +105,12 @@ export function NotesEditor({
         </span>
         <div className="flex items-center gap-1">
           {status !== "idle" && (
-            <Badge variant="outline" className="text-[10px] h-5">
+            <Badge
+              variant="outline"
+              className="text-[10px] h-5"
+              role="status"
+              aria-live="polite"
+            >
               {status === "unsaved"
                 ? "Unsaved"
                 : status === "saving"
@@ -119,6 +126,7 @@ export function NotesEditor({
               size="sm"
               onClick={() => void handleSaveCurrentContent()}
               disabled={status === "saving" || !hasUnsavedChanges}
+              aria-label={`Save ${section.replaceAll("_", " ")} note`}
             >
               <Save className="h-3.5 w-3.5" />
             </Button>

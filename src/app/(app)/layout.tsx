@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { Toaster } from "@/components/ui/toaster";
 import { requireAuthenticatedStaff } from "@/lib/auth";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -17,6 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
       <CommandPalette role={staff.role} clinicSettings={staff.clinics?.settings} />
+      <Toaster />
     </div>
   );
 }

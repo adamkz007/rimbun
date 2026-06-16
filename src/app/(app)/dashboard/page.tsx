@@ -1,5 +1,6 @@
 import { requirePageAccess } from "@/lib/auth";
 import { isModuleEnabled } from "@/lib/modules";
+import { getTodayUtcBounds } from "@/lib/queue";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const activeEncounterCardEnabled =
     ["doctor", "nurse"].includes(staff.role) && clerkingEnabled;
   const queueEnabled = isModuleEnabled(staff.clinics?.settings, "queue");
+  const { start: queueDayStart, end: queueDayEnd } = getTodayUtcBounds();
   const patientQuery = getSingleValue(params.q)?.trim() ?? "";
   const doctorId = getSingleValue(params.doctor)?.trim() ?? "";
   const normalizedRange = normalizeDateRange(
@@ -74,7 +76,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     pastEncountersQuery = pastEncountersQuery.lte("encounter_date", normalizedRange.to);
   }
 
-  const [encounterRes, patientRes, doctorRes, pastEncountersRes] = await Promise.all([
+  const [encounterRes, patientRes, doctorRes, pastEncountersRes, queueRes] = await Promise.all([
     activeEncounterCardEnabled
       ? supabase
           .from("encounters")
@@ -100,10 +102,20 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           .order("created_at", { ascending: false })
           .range(start, start + PAST_ENCOUNTERS_PAGE_SIZE - 1)
       : Promise.resolve({ data: [], count: 0 }),
+    queueEnabled
+      ? supabase
+          .from("queue_entries")
+          .select("id", { count: "exact", head: true })
+          .eq("clinic_id", staff.clinic_id)
+          .in("status", ["waiting", "with_nurse"])
+          .gte("checked_in_at", queueDayStart)
+          .lt("checked_in_at", queueDayEnd)
+      : Promise.resolve({ count: null }),
   ]);
 
   const activeEncounters = encounterRes.count ?? 0;
   const totalPatients = patientRes.count ?? 0;
+  const waitingQueueCount = queueRes.count ?? 0;
   const pastEncounters = (pastEncountersRes.data ?? []) as PastEncounter[];
   const doctorOptions = doctorRes.data ?? [];
   const totalPastEncounters = pastEncountersRes.count ?? 0;
@@ -149,7 +161,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 <ListOrdered className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">0</p>
+                <p className="text-2xl font-bold">{waitingQueueCount}</p>
                 <p className="text-xs text-muted-foreground">Waiting now</p>
               </CardContent>
             </Card>

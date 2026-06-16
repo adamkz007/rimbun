@@ -82,7 +82,7 @@ export default async function PatientsPage({ searchParams }: PatientsPageProps) 
           total,
         }}
         canStartEncounter={
-          ["doctor", "nurse"].includes(staff.role) &&
+          staff.role === "doctor" &&
           isModuleEnabled(staff.clinics?.settings, "clerking")
         }
       />

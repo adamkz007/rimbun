@@ -4,3 +4,7 @@
 [dev]
   command = "next dev"
   targetPort = 3000
+
+# Netlify cron uses UTC. 0 15 * * * = 11:00 PM Malaysia (UTC+8).
+[functions."keep-supabase-active"]
+  schedule = "0 15 * * *"

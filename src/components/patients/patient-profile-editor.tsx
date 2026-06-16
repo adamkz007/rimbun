@@ -26,6 +26,7 @@ import {
   restorePatient,
   updatePatient,
 } from "@/lib/actions/patient-actions";
+import { toast } from "@/lib/toast";
 import {
   patientToFormValues,
   type PatientDuplicateMatch,
@@ -94,7 +95,10 @@ export function PatientProfileEditor({
       setDuplicateMatches(result.duplicateMatches ?? []);
 
       if (result.success) {
+        toast.success("Patient updated", result.message);
         router.refresh();
+      } else if (result.message) {
+        toast.error("Update failed", result.message);
       }
     });
   }
@@ -111,7 +115,10 @@ export function PatientProfileEditor({
 
       if (result.success) {
         setArchiveOpen(false);
+        toast.success("Patient archived", result.message);
         router.refresh();
+      } else if (result.message) {
+        toast.error("Archive failed", result.message);
       }
     });
   }
@@ -124,7 +131,10 @@ export function PatientProfileEditor({
       setArchiveMessage(result.message);
 
       if (result.success) {
+        toast.success("Patient restored", result.message);
         router.refresh();
+      } else if (result.message) {
+        toast.error("Restore failed", result.message);
       }
     });
   }
@@ -142,11 +152,14 @@ export function PatientProfileEditor({
 
       if (result.success) {
         setMergeOpen(false);
+        toast.success("Patients merged", result.message);
         if (result.redirectPatientId) {
           router.push(`/patients/${result.redirectPatientId}`);
           return;
         }
         router.refresh();
+      } else if (result.message) {
+        toast.error("Merge failed", result.message);
       }
     });
   }

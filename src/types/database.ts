@@ -66,6 +66,12 @@ export type Database = {
           doctor_id: string;
           encounter_date: string;
           status: EncounterStatus;
+          completed_at: string | null;
+          completed_by: string | null;
+          amendment_started_at: string | null;
+          amendment_started_by: string | null;
+          last_amended_at: string | null;
+          last_amended_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -184,17 +190,55 @@ export type Database = {
         Insert: Omit<Database["public"]["Tables"]["audit_logs"]["Row"], "id" | "created_at">;
         Update: Partial<Database["public"]["Tables"]["audit_logs"]["Insert"]>;
       };
+      queue_entries: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          patient_id: string;
+          encounter_id: string | null;
+          assigned_doctor_id: string | null;
+          status: QueueStatus;
+          arrival_type: QueueArrivalType;
+          queue_number: number;
+          sort_order: number;
+          checked_in_at: string;
+          checked_in_by: string | null;
+          status_updated_at: string;
+          notes: string | null;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["queue_entries"]["Row"],
+          "id" | "created_at" | "updated_at" | "queue_number" | "sort_order" | "checked_in_at" | "status_updated_at"
+        > & {
+          queue_number?: number;
+          sort_order?: number;
+          checked_in_at?: string;
+          status_updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["queue_entries"]["Insert"]>;
+      };
     };
     Functions: {
       get_user_clinic_id: {
         Args: Record<string, never>;
         Returns: string;
       };
+      next_queue_number: {
+        Args: { p_clinic_id: string };
+        Returns: number;
+      };
     };
   };
 };
 
 export type StaffRole = "admin" | "doctor" | "nurse" | "receptionist";
+export type QueueStatus = "waiting" | "with_nurse" | "with_doctor" | "completed" | "cancelled";
+export type QueueArrivalType = "walk_in" | "appointment";
 export type EncounterStatus = "in_progress" | "completed" | "amended";
 export type NoteSection = "chief_complaint" | "history" | "examination" | "diagnosis" | "general_notes";
 export type DrugRoute = "oral" | "topical" | "injection" | "inhalation" | "sublingual" | "rectal" | "other";

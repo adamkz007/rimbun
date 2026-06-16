@@ -20,6 +20,7 @@ import {
   setStaffMemberActive,
   updateStaffMember,
 } from "@/lib/actions/staff-actions";
+import { toast } from "@/lib/toast";
 import type { StaffRole } from "@/types/database";
 
 type StaffListItem = {
@@ -64,7 +65,10 @@ export function StaffManagement({
       setTemporaryPassword(result.success ? result.temporaryPassword ?? null : null);
 
       if (result.success) {
+        toast.success("Staff member invited", result.message);
         router.refresh();
+      } else if (result.message) {
+        toast.error("Invite failed", result.message);
       }
     });
   }
@@ -84,7 +88,10 @@ export function StaffManagement({
       setRowMessage((current) => ({ ...current, [staffId]: result.message }));
 
       if (result.success) {
+        toast.success("Staff member updated", result.message);
         router.refresh();
+      } else if (result.message) {
+        toast.error("Update failed", result.message);
       }
     });
   }
@@ -97,7 +104,13 @@ export function StaffManagement({
       setRowMessage((current) => ({ ...current, [staffId]: result.message }));
 
       if (result.success) {
+        toast.success(
+          isActive ? "Staff member activated" : "Staff member deactivated",
+          result.message
+        );
         router.refresh();
+      } else if (result.message) {
+        toast.error("Status update failed", result.message);
       }
     });
   }

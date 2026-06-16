@@ -104,8 +104,8 @@ export function EncounterHistory({ encounters }: { encounters: EncounterHistoryI
                         </p>
                       </div>
                     </div>
-                    <Badge variant={encounter.status === "completed" ? "secondary" : "default"}>
-                      {encounter.status === "in_progress" ? "In Progress" : "Completed"}
+                    <Badge variant={encounter.status === "in_progress" ? "default" : "secondary"}>
+                      {formatEncounterStatus(encounter.status)}
                     </Badge>
                   </div>
 
@@ -160,6 +160,13 @@ function getDoctorName(encounter: EncounterHistoryItem) {
 
 function getEncounterTimestamp(encounter: EncounterHistoryItem) {
   return new Date(encounter.encounter_date ?? encounter.created_at).getTime();
+}
+
+function formatEncounterStatus(status: EncounterHistoryItem["status"]) {
+  return status
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function getEncounterSearchText(encounter: EncounterHistoryItem) {

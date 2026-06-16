@@ -10,6 +10,7 @@ import type { Tables } from "@/types/database";
 
 type ClerkingEncounter = Tables<"encounters"> & {
   patients: Pick<Tables<"patients">, "full_name" | "mrn"> | null;
+  doctor: Pick<Tables<"staff">, "full_name"> | null;
 };
 
 export default async function ClerkingListPage() {
@@ -19,23 +20,31 @@ export default async function ClerkingListPage() {
   });
   const supabase = await getSupabaseServerClient();
 
-  const { data: encounters } = await supabase
+  let encountersQuery = supabase
     .from("encounters")
-    .select("*, patients(full_name, mrn)")
-    .eq("doctor_id", staff!.id)
+    .select("*, patients(full_name, mrn), doctor:doctor_id(full_name)")
     .eq("status", "in_progress")
     .order("created_at", { ascending: false });
+
+  encountersQuery =
+    staff.role === "doctor"
+      ? encountersQuery.eq("doctor_id", staff.id)
+      : encountersQuery.eq("clinic_id", staff.clinic_id);
+
+  const { data: encounters } = await encountersQuery;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Clerking</h1>
-        <Link href="/patients">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New Encounter
-          </Button>
-        </Link>
+        {staff.role === "doctor" ? (
+          <Link href="/patients">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              New Encounter
+            </Button>
+          </Link>
+        ) : null}
       </div>
 
       {!encounters?.length ? (
@@ -58,6 +67,11 @@ export default async function ClerkingListPage() {
                     MRN: {encounter.patients?.mrn} | Started{" "}
                     {format(new Date(encounter.created_at), "h:mm a")}
                   </p>
+                  {staff.role !== "doctor" ? (
+                    <p className="text-xs text-muted-foreground">
+                      Doctor: {encounter.doctor?.full_name ?? "Unknown"}
+                    </p>
+                  ) : null}
                 </CardHeader>
               </Card>
             </Link>
