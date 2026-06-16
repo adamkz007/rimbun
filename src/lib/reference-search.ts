@@ -160,13 +160,17 @@ export function shapeDrugSearchResults(rows: DrugRow[]) {
   }));
 }
 
+type ReferenceSearchRpcResult = {
+  data: unknown[] | null;
+  error: { message: string } | null;
+};
+
+type ReferenceSearchClient = {
+  rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<ReferenceSearchRpcResult>;
+};
+
 async function invokeReferenceSearchRpc<TShape>(
-  supabase: {
-    rpc: (
-      fn: string,
-      args: Record<string, unknown>
-    ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
-  },
+  supabase: ReferenceSearchClient,
   fn: string,
   prepared: PreparedSearch,
   shape: (rows: Record<string, unknown>[]) => TShape[]
@@ -197,24 +201,14 @@ async function invokeReferenceSearchRpc<TShape>(
 }
 
 export async function searchIcd10Records(
-  supabase: {
-    rpc: (
-      fn: string,
-      args: Record<string, unknown>
-    ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
-  },
+  supabase: ReferenceSearchClient,
   prepared: PreparedSearch
 ) {
   return invokeReferenceSearchRpc(supabase, "search_icd10_codes", prepared, shapeIcd10SearchResults);
 }
 
 export async function searchDrugRecords(
-  supabase: {
-    rpc: (
-      fn: string,
-      args: Record<string, unknown>
-    ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
-  },
+  supabase: ReferenceSearchClient,
   prepared: PreparedSearch
 ) {
   return invokeReferenceSearchRpc(supabase, "search_drugs", prepared, shapeDrugSearchResults);
