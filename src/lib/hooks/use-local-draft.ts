@@ -70,9 +70,11 @@ export function useLocalDraft<T>(
   const hydratedRef = useRef(false);
   const persistedSerializedRef = useRef(serverSerialized);
 
-  enabledRef.current = enabled;
-  hydratedRef.current = state.hasHydrated;
-  persistedSerializedRef.current = state.persistedSerialized;
+  useEffect(() => {
+    enabledRef.current = enabled;
+    hydratedRef.current = state.hasHydrated;
+    persistedSerializedRef.current = state.persistedSerialized;
+  }, [enabled, state.hasHydrated, state.persistedSerialized]);
 
   useEffect(() => {
     if (!enabled) {

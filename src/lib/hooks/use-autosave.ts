@@ -132,10 +132,12 @@ export function useAutosave<T>(
 
   const initialSerialized = serializeData(initialData);
 
-  latestDataRef.current = data;
-  enabledRef.current = enabled;
-  saveFnRef.current = saveFn;
-  onSaveSuccessRef.current = onSaveSuccess;
+  useEffect(() => {
+    latestDataRef.current = data;
+    enabledRef.current = enabled;
+    saveFnRef.current = saveFn;
+    onSaveSuccessRef.current = onSaveSuccess;
+  }, [data, enabled, saveFn, onSaveSuccess]);
 
   useEffect(() => {
     lastSavedSerializedRef.current = initialSerialized;
@@ -182,6 +184,7 @@ export function useAutosave<T>(
     };
   }, [data, delay, enabled, save]);
 
+  // Flush pending changes on unmount without re-running when `save` identity changes.
   useEffect(() => {
     return () => {
       if (timeoutRef.current) {
@@ -192,6 +195,7 @@ export function useAutosave<T>(
         void save(latestDataRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only cleanup
   }, []);
 
   const saveNow = useCallback((dataOverride?: T) => save(dataOverride ?? latestDataRef.current), [save]);

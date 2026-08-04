@@ -9,6 +9,8 @@ import {
   ListOrdered,
   Receipt,
   Pill,
+  Phone,
+  Clock,
   Settings,
   LayoutDashboard,
   Menu,
@@ -38,6 +40,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/queue", label: "Queue", icon: ListOrdered, roles: ["admin", "doctor", "nurse", "receptionist"], module: "queue" },
   { href: "/billing", label: "Billing", icon: Receipt, roles: ["admin", "receptionist"], module: "billing" },
   { href: "/dispensary", label: "Dispensary", icon: Pill, roles: ["doctor", "nurse", "admin"], module: "dispensary" },
+  { href: "/enquiry", label: "Enquiries", icon: Phone, roles: ["admin", "receptionist"], module: "enquiry" },
+  { href: "/attendance", label: "Attendance", icon: Clock, roles: ["admin", "doctor", "nurse", "receptionist"], module: "attendance" },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
 ];
 
@@ -77,7 +81,7 @@ export function Sidebar({
     <>
       <div className="flex h-14 items-center border-b px-4">
         <Link href="/dashboard" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
-          <RimbunMark className="h-5 w-5 text-primary" />
+          <RimbunMark className="h-5 w-5 text-secondary-foreground" />
           <span className="font-semibold">Rimbun</span>
         </Link>
         <button
@@ -103,8 +107,8 @@ export function Sidebar({
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               )}
             >
               <item.icon className="h-4 w-4" />

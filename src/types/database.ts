@@ -221,6 +221,337 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["queue_entries"]["Insert"]>;
       };
+      fee_catalog: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          code: string;
+          description: string;
+          category: FeeCategory;
+          unit_amount: number;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["fee_catalog"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["fee_catalog"]["Insert"]>;
+      };
+      invoices: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          patient_id: string;
+          encounter_id: string | null;
+          invoice_number: number;
+          status: InvoiceStatus;
+          subtotal: number;
+          total: number;
+          amount_paid: number;
+          currency: string;
+          notes: string | null;
+          issued_at: string | null;
+          issued_by: string | null;
+          voided_at: string | null;
+          voided_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["invoices"]["Row"],
+          "id" | "created_at" | "updated_at" | "subtotal" | "total" | "amount_paid"
+        > & {
+          subtotal?: number;
+          total?: number;
+          amount_paid?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["invoices"]["Insert"]>;
+      };
+      invoice_line_items: {
+        Row: {
+          id: string;
+          invoice_id: string;
+          source_type: InvoiceLineSourceType;
+          source_id: string | null;
+          description: string;
+          quantity: number;
+          unit_amount: number;
+          line_total: number;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["invoice_line_items"]["Row"], "id" | "created_at">;
+        Update: Partial<Database["public"]["Tables"]["invoice_line_items"]["Insert"]>;
+      };
+      invoice_payments: {
+        Row: {
+          id: string;
+          invoice_id: string;
+          payment_method: PaymentMethod;
+          amount: number;
+          reference: string | null;
+          notes: string | null;
+          recorded_at: string;
+          recorded_by: string | null;
+        };
+        Insert: Omit<Database["public"]["Tables"]["invoice_payments"]["Row"], "id" | "recorded_at"> & {
+          recorded_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["invoice_payments"]["Insert"]>;
+      };
+      inventory_items: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          drug_id: string | null;
+          name: string;
+          sku: string | null;
+          formulation: string | null;
+          strength: string | null;
+          unit: string;
+          quantity_on_hand: number;
+          reorder_level: number;
+          is_controlled: boolean;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["inventory_items"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["inventory_items"]["Insert"]>;
+      };
+      dispensary_fulfillments: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          encounter_id: string;
+          encounter_prescription_id: string;
+          patient_id: string;
+          inventory_item_id: string | null;
+          status: FulfillmentStatus;
+          drug_name: string;
+          dosage: string;
+          quantity_requested: number;
+          quantity_dispensed: number | null;
+          is_controlled: boolean;
+          controlled_verified_by: string | null;
+          dispensed_at: string | null;
+          dispensed_by: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["dispensary_fulfillments"]["Row"],
+          "id" | "created_at" | "updated_at" | "quantity_dispensed" | "controlled_verified_by" | "dispensed_at" | "dispensed_by" | "notes"
+        > & {
+          quantity_dispensed?: number | null;
+          controlled_verified_by?: string | null;
+          dispensed_at?: string | null;
+          dispensed_by?: string | null;
+          notes?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["dispensary_fulfillments"]["Insert"]>;
+      };
+      stock_movements: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          inventory_item_id: string;
+          movement_type: StockMovementType;
+          quantity_change: number;
+          quantity_after: number;
+          reference_type: "fulfillment" | "manual" | null;
+          reference_id: string | null;
+          reason: string | null;
+          recorded_by: string | null;
+          recorded_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["stock_movements"]["Row"], "id" | "recorded_at"> & {
+          recorded_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["stock_movements"]["Insert"]>;
+      };
+      enquiries: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          source: EnquirySource;
+          status: EnquiryStatus;
+          contact_name: string;
+          contact_phone: string | null;
+          contact_email: string | null;
+          subject: string | null;
+          notes: string | null;
+          patient_id: string | null;
+          converted_patient_id: string | null;
+          scheduled_at: string | null;
+          assigned_to: string | null;
+          recorded_by: string | null;
+          converted_at: string | null;
+          converted_by: string | null;
+          closed_at: string | null;
+          closed_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["enquiries"]["Row"],
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "status"
+          | "patient_id"
+          | "converted_patient_id"
+          | "scheduled_at"
+          | "assigned_to"
+          | "recorded_by"
+          | "converted_at"
+          | "converted_by"
+          | "closed_at"
+          | "closed_by"
+        > & {
+          status?: EnquiryStatus;
+          patient_id?: string | null;
+          converted_patient_id?: string | null;
+          scheduled_at?: string | null;
+          assigned_to?: string | null;
+          recorded_by?: string | null;
+          converted_at?: string | null;
+          converted_by?: string | null;
+          closed_at?: string | null;
+          closed_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["enquiries"]["Insert"]>;
+      };
+      enquiry_reminders: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          enquiry_id: string;
+          reminder_type: ReminderType;
+          status: ReminderStatus;
+          notification_channel: NotificationChannel;
+          remind_at: string;
+          message: string | null;
+          sent_at: string | null;
+          dismissed_at: string | null;
+          dismissed_by: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["enquiry_reminders"]["Row"],
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "status"
+          | "notification_channel"
+          | "message"
+          | "sent_at"
+          | "dismissed_at"
+          | "dismissed_by"
+          | "created_by"
+        > & {
+          status?: ReminderStatus;
+          notification_channel?: NotificationChannel;
+          message?: string | null;
+          sent_at?: string | null;
+          dismissed_at?: string | null;
+          dismissed_by?: string | null;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["enquiry_reminders"]["Insert"]>;
+      };
+      staff_shifts: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          staff_id: string;
+          shift_date: string;
+          start_time: string;
+          end_time: string;
+          status: ShiftStatus;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["staff_shifts"]["Row"],
+          "id" | "created_at" | "updated_at" | "status" | "notes" | "created_by"
+        > & {
+          status?: ShiftStatus;
+          notes?: string | null;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["staff_shifts"]["Insert"]>;
+      };
+      attendance_records: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          staff_id: string;
+          shift_id: string | null;
+          clock_in_at: string;
+          clock_out_at: string | null;
+          status: AttendanceStatus;
+          notes: string | null;
+          recorded_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["attendance_records"]["Row"],
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "shift_id"
+          | "clock_out_at"
+          | "status"
+          | "notes"
+          | "recorded_by"
+        > & {
+          shift_id?: string | null;
+          clock_out_at?: string | null;
+          status?: AttendanceStatus;
+          notes?: string | null;
+          recorded_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["attendance_records"]["Insert"]>;
+      };
+      leave_requests: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          staff_id: string;
+          leave_type: LeaveType;
+          status: LeaveStatus;
+          start_date: string;
+          end_date: string;
+          reason: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["leave_requests"]["Row"],
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "status"
+          | "reason"
+          | "reviewed_by"
+          | "reviewed_at"
+        > & {
+          status?: LeaveStatus;
+          reason?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["leave_requests"]["Insert"]>;
+      };
     };
     Functions: {
       get_user_clinic_id: {
@@ -231,6 +562,10 @@ export type Database = {
         Args: { p_clinic_id: string };
         Returns: number;
       };
+      next_invoice_number: {
+        Args: { p_clinic_id: string };
+        Returns: number;
+      };
     };
   };
 };
@@ -238,6 +573,21 @@ export type Database = {
 export type StaffRole = "admin" | "doctor" | "nurse" | "receptionist";
 export type QueueStatus = "waiting" | "with_nurse" | "with_doctor" | "completed" | "cancelled";
 export type QueueArrivalType = "walk_in" | "appointment";
+export type InvoiceStatus = "draft" | "issued" | "paid" | "partial" | "void";
+export type InvoiceLineSourceType = "consultation" | "prescription" | "fee_catalog" | "manual";
+export type PaymentMethod = "cash" | "card" | "bank_transfer" | "ewallet" | "other";
+export type FeeCategory = "consultation" | "procedure" | "medication" | "other";
+export type FulfillmentStatus = "pending" | "dispensed" | "cancelled";
+export type StockMovementType = "receipt" | "dispense" | "adjustment" | "return";
+export type EnquirySource = "call" | "walk_in" | "follow_up" | "appointment";
+export type EnquiryStatus = "new" | "in_progress" | "scheduled" | "converted" | "closed" | "cancelled";
+export type ReminderType = "follow_up" | "appointment" | "callback";
+export type ReminderStatus = "pending" | "sent" | "dismissed" | "failed";
+export type NotificationChannel = "in_app" | "email" | "sms";
+export type ShiftStatus = "scheduled" | "cancelled";
+export type AttendanceStatus = "clocked_in" | "clocked_out" | "missed" | "adjusted";
+export type LeaveType = "annual" | "sick" | "unpaid" | "emergency";
+export type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
 export type EncounterStatus = "in_progress" | "completed" | "amended";
 export type NoteSection = "chief_complaint" | "history" | "examination" | "diagnosis" | "general_notes";
 export type DrugRoute = "oral" | "topical" | "injection" | "inhalation" | "sublingual" | "rectal" | "other";
@@ -248,6 +598,7 @@ export type ClinicSettings = {
     queue?: boolean;
     billing?: boolean;
     dispensary?: boolean;
+    enquiry?: boolean;
     attendance?: boolean;
   };
 };

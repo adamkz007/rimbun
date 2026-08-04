@@ -2,42 +2,25 @@
 
 import { logAuditEvent } from "@/lib/audit";
 import { requireActionAccess } from "@/lib/auth";
+import { generateDraftInvoiceFromEncounter } from "@/lib/actions/billing-actions";
+import { createFulfillmentTasksFromEncounter } from "@/lib/actions/dispensary-actions";
 import { completeQueueEntryForEncounter } from "@/lib/actions/queue-actions";
+import { isModuleEnabled } from "@/lib/modules";
 import { NOTE_SECTIONS } from "@/lib/constants";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import type { DrugRoute, NoteSection, Tables } from "@/types/database";
-
-type EncounterAccessRecord = Pick<
-  Tables<"encounters">,
-  | "id"
-  | "clinic_id"
-  | "doctor_id"
-  | "status"
-  | "completed_at"
-  | "completed_by"
-  | "amendment_started_at"
-  | "amendment_started_by"
-  | "last_amended_at"
-  | "last_amended_by"
->;
+import {
+  canEditEncounter,
+  computeBmi,
+  type EncounterAccessRecord,
+  validateEncounterItemOrderIds,
+} from "@/lib/encounters";
+import type { DrugRoute, NoteSection } from "@/types/database";
 
 type EncounterChildTable = "encounter_diagnoses" | "encounter_prescriptions";
 
 const NOTE_SECTION_SORT_ORDER: Record<NoteSection, number> = Object.fromEntries(
   NOTE_SECTIONS.map((section, index) => [section.value, index])
 ) as Record<NoteSection, number>;
-
-function computeBmi(weight: number | null | undefined, height: number | null | undefined) {
-  if (!weight || !height || weight <= 0 || height <= 0) {
-    return null;
-  }
-
-  return Number((weight / ((height / 100) ** 2)).toFixed(1));
-}
-
-function canEditEncounter(encounter: EncounterAccessRecord) {
-  return encounter.status === "in_progress" || Boolean(encounter.amendment_started_at);
-}
 
 async function getEncounterAccessRecord(encounterId: string) {
   const supabase = await getSupabaseServerClient();
@@ -159,14 +142,11 @@ async function validateEncounterItemOrder(
 
   if (error) throw new Error(error.message);
 
-  const existingIds = (data ?? []).map((item) => item.id).sort();
-  const requestedIds = [...orderedIds].sort();
+  const existingIds = (data ?? []).map((item) => item.id);
+  const validation = validateEncounterItemOrderIds(existingIds, orderedIds);
 
-  if (
-    existingIds.length !== requestedIds.length ||
-    existingIds.some((id, index) => id !== requestedIds[index])
-  ) {
-    throw new Error("Unable to reorder encounter items because the list is out of date.");
+  if (!validation.valid) {
+    throw new Error(validation.message);
   }
 }
 
@@ -434,6 +414,14 @@ export async function completeEncounter(encounterId: string) {
 
   if (!isFinalizingAmendment) {
     await completeQueueEntryForEncounter(encounterId);
+
+    if (isModuleEnabled(staff.clinics?.settings, "billing")) {
+      await generateDraftInvoiceFromEncounter(encounterId, staff.clinics?.settings);
+    }
+
+    if (isModuleEnabled(staff.clinics?.settings, "dispensary")) {
+      await createFulfillmentTasksFromEncounter(encounterId, staff.clinics?.settings);
+    }
   }
 }
 

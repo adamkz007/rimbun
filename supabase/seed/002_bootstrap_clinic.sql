@@ -26,8 +26,9 @@ begin
       "modules": {
         "clerking": true,
         "queue": true,
-        "billing": false,
+        "billing": true,
         "dispensary": false,
+        "enquiry": false,
         "attendance": false
       }
     }'::jsonb

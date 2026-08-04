@@ -1,4 +1,4 @@
-import { isModuleEnabled, type AppModule } from "@/lib/modules";
+import { isModuleEnabled, type AppModule } from "./modules";
 import type { ClinicSettings, StaffRole } from "@/types/database";
 
 export type AccessOptions = {
@@ -22,6 +22,8 @@ const PROTECTED_ROUTE_RULES: RouteAccessRule[] = [
   { pathPrefix: "/queue", roles: STAFF_ROLES, module: "queue" },
   { pathPrefix: "/billing", roles: ["admin", "receptionist"], module: "billing" },
   { pathPrefix: "/dispensary", roles: ["admin", "doctor", "nurse"], module: "dispensary" },
+  { pathPrefix: "/enquiry", roles: ["admin", "receptionist"], module: "enquiry" },
+  { pathPrefix: "/attendance", roles: STAFF_ROLES, module: "attendance" },
   { pathPrefix: "/settings", roles: ["admin"] },
   { pathPrefix: "/api/search/patients", roles: STAFF_ROLES },
   { pathPrefix: "/api/search/icd10", roles: ["doctor", "nurse"], module: "clerking" },

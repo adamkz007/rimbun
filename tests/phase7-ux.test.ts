@@ -4,13 +4,13 @@ import {
   getClerkingTabFromShortcut,
   shouldIgnoreClerkingShortcut,
   CLERKING_TAB_ORDER,
-} from "../src/lib/clerking-shortcuts.ts";
+} from "../src/lib/clerking-shortcuts";
 import {
   isModuleEnabled,
   isModuleImplemented,
   isModuleVisibleInNav,
-} from "../src/lib/modules.ts";
-import { dismissToast, subscribeToasts, toast } from "../src/lib/toast.ts";
+} from "../src/lib/modules";
+import { dismissToast, subscribeToasts, toast } from "../src/lib/toast";
 
 test("getClerkingTabFromShortcut maps Alt+digit tabs in workspace order", () => {
   assert.equal(getClerkingTabFromShortcut(1), CLERKING_TAB_ORDER[0]);
@@ -35,11 +35,11 @@ test("shouldIgnoreClerkingShortcut ignores editable and dialog targets", () => {
   };
   const panel = { tagName: "DIV", isContentEditable: false, closest: () => null };
 
-  assert.equal(shouldIgnoreClerkingShortcut(input as EventTarget), true);
-  assert.equal(shouldIgnoreClerkingShortcut(textarea as EventTarget), true);
-  assert.equal(shouldIgnoreClerkingShortcut(editor as EventTarget), true);
-  assert.equal(shouldIgnoreClerkingShortcut(dialogTarget as EventTarget), true);
-  assert.equal(shouldIgnoreClerkingShortcut(panel as EventTarget), false);
+  assert.equal(shouldIgnoreClerkingShortcut(input as unknown as EventTarget), true);
+  assert.equal(shouldIgnoreClerkingShortcut(textarea as unknown as EventTarget), true);
+  assert.equal(shouldIgnoreClerkingShortcut(editor as unknown as EventTarget), true);
+  assert.equal(shouldIgnoreClerkingShortcut(dialogTarget as unknown as EventTarget), true);
+  assert.equal(shouldIgnoreClerkingShortcut(panel as unknown as EventTarget), false);
 });
 
 test("isModuleVisibleInNav requires both clinic flag and implementation", () => {

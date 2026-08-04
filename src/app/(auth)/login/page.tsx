@@ -27,7 +27,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mb-2 flex justify-center">
-            <span className="inline-flex size-12 items-center justify-center rounded-full bg-[#0f5a53]/8 text-[#0f5a53]">
+            <span className="inline-flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
               <RimbunMark className="size-8" />
             </span>
           </div>

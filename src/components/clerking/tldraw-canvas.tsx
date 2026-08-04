@@ -21,7 +21,7 @@ export default function TldrawCanvas({
 
       if (initialSnapshot) {
         try {
-          editor.loadSnapshot(initialSnapshot as any);
+          editor.loadSnapshot(initialSnapshot as Parameters<Editor["loadSnapshot"]>[0]);
         } catch {
           // Invalid snapshot data, start fresh
         }

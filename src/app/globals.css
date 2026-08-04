@@ -33,6 +33,10 @@
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-muted: var(--brand-muted);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand: var(--brand);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
   --color-popover-foreground: var(--popover-foreground);
@@ -49,6 +53,13 @@
 }
 
 :root {
+  /* Rimbun brand greens — aligned with marketing homepage */
+  --brand: #0f5a53;
+  --brand-dark: #083a39;
+  --brand-muted: #daf6f1;
+  --brand-cream: #f6f0e8;
+  --brand-foreground: #f6f0e8;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -57,33 +68,37 @@
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
+  --secondary: var(--brand-muted);
+  --secondary-foreground: var(--brand);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --accent: color-mix(in oklch, var(--brand) 8%, white);
+  --accent-foreground: var(--brand);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --ring: color-mix(in oklch, var(--brand) 35%, oklch(0.708 0 0));
+  --chart-1: var(--brand);
+  --chart-2: color-mix(in oklch, var(--brand) 70%, white);
+  --chart-3: var(--brand-dark);
+  --chart-4: oklch(0.556 0 0);
+  --chart-5: oklch(0.371 0 0);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-cream);
+  --sidebar-accent: var(--brand-muted);
+  --sidebar-accent-foreground: var(--brand);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: color-mix(in oklch, var(--brand) 35%, oklch(0.708 0 0));
 }
 
 .dark {
+  --secondary: color-mix(in oklch, var(--brand) 28%, black);
+  --secondary-foreground: color-mix(in oklch, var(--brand-muted) 88%, white);
+  --accent: color-mix(in oklch, var(--brand) 22%, black);
+  --accent-foreground: color-mix(in oklch, var(--brand-muted) 88%, white);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -92,29 +107,25 @@
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --ring: color-mix(in oklch, var(--brand) 45%, oklch(0.556 0 0));
+  --chart-1: color-mix(in oklch, var(--brand-muted) 85%, white);
+  --chart-2: var(--brand);
+  --chart-3: var(--brand-dark);
+  --chart-4: oklch(0.556 0 0);
+  --chart-5: oklch(0.371 0 0);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-cream);
+  --sidebar-accent: color-mix(in oklch, var(--brand) 28%, black);
+  --sidebar-accent-foreground: color-mix(in oklch, var(--brand-muted) 88%, white);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: color-mix(in oklch, var(--brand) 45%, oklch(0.556 0 0));
 }
 
 @layer base {

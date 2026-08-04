@@ -54,6 +54,8 @@ export function ScratchpadCanvas({
   const lastSavedSnapshotRef = useRef(serializeSnapshot(initialData));
   const draftStorageKey = `clerking:draft:scratchpad:${encounterId}`;
 
+  // Hydrate scratchpad state from session storage when the encounter changes.
+  /* eslint-disable react-hooks/set-state-in-effect -- client-only draft restore must run after mount */
   useEffect(() => {
     const serverSerialized = serializeSnapshot(initialData);
     lastSavedSnapshotRef.current = serverSerialized;
@@ -97,6 +99,7 @@ export function ScratchpadCanvas({
 
     setHasHydrated(true);
   }, [disabled, draftStorageKey, encounterId, initialData]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const saveSnapshot = useCallback(async (versionToSave = pendingSaveVersionRef.current) => {
     const snapshot = snapshotRef.current;

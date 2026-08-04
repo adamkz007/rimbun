@@ -3,10 +3,17 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, ArrowLeft, ClipboardPen } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ClipboardPen, Receipt } from "lucide-react";
 import Link from "next/link";
 import { format, differenceInYears } from "date-fns";
 import { requirePageAccess } from "@/lib/auth";
+import {
+  formatCurrency,
+  formatInvoiceNumber,
+  getInvoiceStatusLabel,
+  invoiceStatusBadgeVariant,
+} from "@/lib/billing";
+import { isModuleEnabled } from "@/lib/modules";
 import type { Tables } from "@/types/database";
 import { PatientProfileEditor } from "@/components/patients/patient-profile-editor";
 import { parseMedicalHistory } from "@/lib/patients";
@@ -15,15 +22,23 @@ type PatientEncounter = Pick<Tables<"encounters">, "id" | "status" | "created_at
   staff: Array<Pick<Tables<"staff">, "full_name">> | null;
 };
 
+type PatientInvoice = Pick<
+  Tables<"invoices">,
+  "id" | "invoice_number" | "status" | "total" | "currency" | "created_at"
+>;
+
 export default async function PatientProfilePage({
   params,
 }: {
   params: Promise<{ patientId: string }>;
 }) {
   const { patientId } = await params;
-  await requirePageAccess({
+  const staff = await requirePageAccess({
     roles: ["admin", "doctor", "nurse", "receptionist"],
   });
+  const billingEnabled =
+    isModuleEnabled(staff.clinics?.settings, "billing") &&
+    ["admin", "receptionist"].includes(staff.role);
   const supabase = await getSupabaseServerClient();
 
   const { data: patient } = await supabase
@@ -35,7 +50,8 @@ export default async function PatientProfilePage({
   if (!patient) notFound();
 
   const medicalHistory = parseMedicalHistory(patient.medical_history);
-  const [{ data: encounters }, { data: mergeCandidates }, mergedIntoResult] = await Promise.all([
+  const [encountersResult, mergeCandidatesResult, mergedIntoResult, invoicesResult] =
+    await Promise.all([
     supabase
       .from("encounters")
       .select("id, status, created_at, staff:doctor_id(full_name)")
@@ -55,8 +71,20 @@ export default async function PatientProfilePage({
           .eq("id", patient.merged_into_patient_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    billingEnabled
+      ? supabase
+          .from("invoices")
+          .select("id, invoice_number, status, total, currency, created_at")
+          .eq("patient_id", patientId)
+          .neq("status", "void")
+          .order("created_at", { ascending: false })
+          .limit(10)
+      : Promise.resolve({ data: [] }),
   ]);
+  const encounters = encountersResult.data;
+  const mergeCandidates = mergeCandidatesResult.data;
   const mergedIntoPatient = mergedIntoResult.data;
+  const invoices = invoicesResult.data;
 
   const age = patient.date_of_birth
     ? differenceInYears(new Date(), new Date(patient.date_of_birth))
@@ -211,6 +239,50 @@ export default async function PatientProfilePage({
           </CardContent>
         </Card>
       </div>
+
+      {billingEnabled ? (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-sm">Billing History</CardTitle>
+            <Link href="/billing">
+              <Button variant="outline" size="sm">
+                Open billing
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {!invoices?.length ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No invoices recorded for this patient.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {(invoices as PatientInvoice[]).map((invoice) => (
+                  <Link key={invoice.id} href={`/billing/${invoice.id}`}>
+                    <div className="flex items-center justify-between rounded-md border p-3 hover:bg-muted/50 transition-colors cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <Receipt className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">
+                            {formatInvoiceNumber(invoice.invoice_number)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(invoice.created_at), "dd MMM yyyy, h:mm a")} •{" "}
+                            {formatCurrency(invoice.total, invoice.currency)}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant={invoiceStatusBadgeVariant(invoice.status)}>
+                        {getInvoiceStatusLabel(invoice.status)}
+                      </Badge>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

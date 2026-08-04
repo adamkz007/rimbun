@@ -12,8 +12,8 @@ import {
   getTodayUtcBounds,
   isActiveQueueStatus,
   sortQueueEntries,
-} from "../src/lib/queue.ts";
-import { isModuleImplemented, isModuleVisibleInNav } from "../src/lib/modules.ts";
+} from "../src/lib/queue";
+import { isModuleImplemented, isModuleVisibleInNav } from "../src/lib/modules";
 
 test("formatQueueNumber pads queue numbers to three digits", () => {
   assert.equal(formatQueueNumber(1), "001");

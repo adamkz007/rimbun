@@ -9,7 +9,7 @@ import {
   searchIcd10Records,
   shapeDrugSearchResults,
   shapeIcd10SearchResults,
-} from "../src/lib/reference-search.ts";
+} from "../src/lib/reference-search";
 
 test("clampSearchLimit bounds invalid and oversized input", () => {
   assert.equal(clampSearchLimit(undefined), 10);

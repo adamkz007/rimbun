@@ -165,7 +165,7 @@ type ReferenceSearchRpcResult = {
   error: { message: string } | null;
 };
 
-type ReferenceSearchClient = {
+export type ReferenceSearchClient = {
   rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<ReferenceSearchRpcResult>;
 };
 

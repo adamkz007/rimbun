@@ -7,46 +7,14 @@ import { logAuditEvent } from "@/lib/audit";
 import {
   type PatientActionResult,
   type PatientDuplicateMatch,
-  type PatientFieldErrors,
   type PatientFormValues,
   parseMedicalHistory,
+  parsePatientFormInput,
+  type ParsedPatientInput,
+  toPatientFieldErrors,
 } from "@/lib/patients";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
-
-const optionalString = (maxLength: number) =>
-  z.preprocess((value) => {
-    if (typeof value !== "string") return undefined;
-    const trimmed = value.trim();
-    return trimmed ? trimmed : undefined;
-  }, z.string().max(maxLength).optional());
-
-const patientFormSchema = z.object({
-  fullName: z.string().trim().min(2, "Full name is required.").max(120),
-  icNumber: optionalString(30),
-  dateOfBirth: z.preprocess((value) => {
-    if (typeof value !== "string") return undefined;
-    const trimmed = value.trim();
-    return trimmed ? trimmed : undefined;
-  }, z.iso.date().optional()),
-  gender: z.enum(["male", "female", "other"]).optional(),
-  phone: optionalString(30),
-  email: z.preprocess((value) => {
-    if (typeof value !== "string") return undefined;
-    const trimmed = value.trim().toLowerCase();
-    return trimmed ? trimmed : undefined;
-  }, z.email().optional()),
-  address: optionalString(500),
-  emergencyContactName: optionalString(120),
-  emergencyContactPhone: optionalString(30),
-  allergies: optionalString(1000),
-  medicalConditions: optionalString(1000),
-  currentMedications: optionalString(1000),
-  surgicalHistory: optionalString(2000),
-  familyHistory: optionalString(2000),
-  socialHistory: optionalString(2000),
-  medicalNotes: optionalString(2000),
-});
 
 const archivePatientSchema = z.object({
   patientId: z.uuid(),
@@ -56,10 +24,13 @@ const archivePatientSchema = z.object({
 const mergePatientsSchema = z.object({
   sourcePatientId: z.uuid(),
   targetPatientId: z.uuid(),
-  reason: optionalString(500),
+  reason: z.preprocess((value) => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }, z.string().max(500).optional()),
 });
 
-type ParsedPatientInput = z.output<typeof patientFormSchema>;
 type SupabaseServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
 type PatientRecord = Pick<
   Tables<"patients">,
@@ -85,13 +56,13 @@ export async function registerPatient(input: PatientFormValues): Promise<Patient
   const staff = await requireActionAccess({
     roles: ["admin", "doctor", "nurse", "receptionist"],
   });
-  const parsed = patientFormSchema.safeParse(input);
+  const parsed = parsePatientFormInput(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid patient details.",
-      fieldErrors: toFieldErrors(parsed.error.flatten().fieldErrors),
+      fieldErrors: toPatientFieldErrors(parsed.error.issues),
     };
   }
 
@@ -154,7 +125,7 @@ export async function updatePatient(
     roles: ["admin", "doctor", "nurse", "receptionist"],
   });
   const parsedId = z.uuid().safeParse(patientId);
-  const parsed = patientFormSchema.safeParse(input);
+  const parsed = parsePatientFormInput(input);
 
   if (!parsedId.success) {
     return {
@@ -167,7 +138,7 @@ export async function updatePatient(
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid patient details.",
-      fieldErrors: toFieldErrors(parsed.error.flatten().fieldErrors),
+      fieldErrors: toPatientFieldErrors(parsed.error.issues),
     };
   }
 
@@ -727,19 +698,6 @@ function splitCsv(value: string | undefined) {
 
 function uniqueStrings(values: string[]) {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
-}
-
-function toFieldErrors(errors: Record<string, string[] | undefined>): PatientFieldErrors {
-  const result: PatientFieldErrors = {};
-
-  for (const [key, messages] of Object.entries(errors)) {
-    const firstMessage = messages?.[0];
-    if (!firstMessage) continue;
-
-    result[key as keyof PatientFieldErrors] = firstMessage;
-  }
-
-  return result;
 }
 
 function revalidatePatientPaths(patientId: string) {

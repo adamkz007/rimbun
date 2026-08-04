@@ -17,6 +17,7 @@ const MODULE_LABELS: Record<AppModule, string> = {
   queue: "Queue",
   billing: "Billing",
   dispensary: "Dispensary",
+  enquiry: "Enquiries",
   attendance: "Attendance",
 };
 

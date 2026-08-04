@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,12 +43,16 @@ export function DiagnosisPicker({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState<{
+  const [measuredDropdownPosition, setMeasuredDropdownPosition] = useState<{
     top: number;
     left: number;
     width: number;
   } | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
   const searchContainerRef = useRef<HTMLDivElement | null>(null);
   const listboxId = `diagnosis-search-${encounterId}`;
 
@@ -70,6 +74,7 @@ export function DiagnosisPicker({
   useDebounce(query, 300, search);
 
   const showOverlay = results.length > 0 || searching;
+  const dropdownPosition = showOverlay ? measuredDropdownPosition : null;
 
   const updateDropdownPosition = useCallback(() => {
     if (!searchContainerRef.current) {
@@ -77,7 +82,7 @@ export function DiagnosisPicker({
     }
 
     const rect = searchContainerRef.current.getBoundingClientRect();
-    setDropdownPosition({
+    setMeasuredDropdownPosition({
       top: rect.bottom + 4,
       left: rect.left,
       width: rect.width,
@@ -85,12 +90,7 @@ export function DiagnosisPicker({
   }, []);
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
     if (!showOverlay) {
-      setDropdownPosition(null);
       return;
     }
 

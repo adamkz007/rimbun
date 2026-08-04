@@ -2,13 +2,20 @@
   "name": "rimbun",
   "version": "0.1.0",
   "private": true,
+  "imports": {
+    "@/*": "./src/*"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
-    "test": "node --test --experimental-strip-types tests/**/*.test.ts",
+    "lint": "eslint src tests e2e",
+    "test": "node --import ./tests/register.mjs --test --experimental-strip-types tests/*.test.ts tests/reference-search.test.ts",
+    "test:integration": "node --import ./tests/register.mjs --test --experimental-strip-types tests/integration/**/*.test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit",
+    "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "reference-data:build": "node scripts/reference-data/build-all.mjs",
     "netlify:status": "pnpm --package=netlify-cli dlx netlify status",
     "netlify:link": "pnpm --package=netlify-cli dlx netlify link --name rimbun",
@@ -45,6 +52,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
+    "@playwright/test": "^1.55.0",
     "typescript": "^5"
   }
 }

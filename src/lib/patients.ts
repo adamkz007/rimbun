@@ -1,4 +1,5 @@
 import type { Tables } from "@/types/database";
+import { z } from "zod";
 
 export const DEFAULT_PATIENT_PAGE_SIZE = 10;
 
@@ -145,4 +146,63 @@ function toNullableString(value: unknown) {
 
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+const optionalString = (maxLength: number) =>
+  z.preprocess((value) => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }, z.string().max(maxLength).optional());
+
+export const patientFormSchema = z.object({
+  fullName: z.string().trim().min(2, "Full name is required.").max(120),
+  icNumber: optionalString(30),
+  dateOfBirth: z.preprocess((value) => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }, z.iso.date().optional()),
+  gender: z.preprocess((value) => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }, z.enum(["male", "female", "other"]).optional()),
+  phone: optionalString(30),
+  email: z.preprocess((value) => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim().toLowerCase();
+    return trimmed ? trimmed : undefined;
+  }, z.email().optional()),
+  address: optionalString(500),
+  emergencyContactName: optionalString(120),
+  emergencyContactPhone: optionalString(30),
+  allergies: optionalString(1000),
+  medicalConditions: optionalString(1000),
+  currentMedications: optionalString(1000),
+  surgicalHistory: optionalString(2000),
+  familyHistory: optionalString(2000),
+  socialHistory: optionalString(2000),
+  medicalNotes: optionalString(2000),
+});
+
+export type ParsedPatientInput = z.output<typeof patientFormSchema>;
+
+export function parsePatientFormInput(input: PatientFormValues) {
+  return patientFormSchema.safeParse(input);
+}
+
+export function toPatientFieldErrors(
+  issues: z.ZodIssue[]
+): PatientFieldErrors {
+  const fieldErrors: PatientFieldErrors = {};
+
+  for (const issue of issues) {
+    const field = issue.path[0];
+    if (typeof field === "string" && field in EMPTY_PATIENT_FORM_VALUES) {
+      fieldErrors[field as keyof PatientFormValues] = issue.message;
+    }
+  }
+
+  return fieldErrors;
 }

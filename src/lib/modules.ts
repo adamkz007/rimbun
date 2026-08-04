@@ -7,15 +7,17 @@ const DEFAULT_MODULE_FLAGS: Record<AppModule, boolean> = {
   queue: false,
   billing: false,
   dispensary: false,
+  enquiry: false,
   attendance: false,
 };
 
 export const IMPLEMENTED_MODULES: Record<AppModule, boolean> = {
   clerking: true,
   queue: true,
-  billing: false,
-  dispensary: false,
-  attendance: false,
+  billing: true,
+  dispensary: true,
+  enquiry: true,
+  attendance: true,
 };
 
 export function isModuleEnabled(

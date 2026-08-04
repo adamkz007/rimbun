@@ -51,5 +51,16 @@ docs/
 # Local Netlify folder
 .netlify
 
+# Playwright output
+playwright-report/
+test-results/
+
+# Supabase local CLI cache
+supabase/.temp/
+
 # Netlify edge build artifact
 deno.lock
+
+# Allow deployment docs
+!docs/
+!docs/**

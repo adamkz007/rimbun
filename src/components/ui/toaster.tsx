@@ -17,7 +17,7 @@ function ToastItem({ toast }: { toast: ToastMessage }) {
       aria-live="polite"
       className={cn(
         "pointer-events-auto w-full max-w-sm rounded-lg border bg-background p-4 shadow-lg ring-1 ring-foreground/10",
-        toast.variant === "success" && "border-emerald-500/30",
+        toast.variant === "success" && "border-secondary-foreground/30",
         toast.variant === "error" && "border-destructive/30"
       )}
     >

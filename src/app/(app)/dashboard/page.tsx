@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
-import { ClipboardPen, Filter, ListOrdered, RotateCcw, Search, Users } from "lucide-react";
+import { ClipboardPen, Filter, ListOrdered, Phone, Pill, Receipt, RotateCcw, Search, Users, Clock } from "lucide-react";
 import Link from "next/link";
 import type { Tables } from "@/types/database";
 
@@ -39,6 +39,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const activeEncounterCardEnabled =
     ["doctor", "nurse"].includes(staff.role) && clerkingEnabled;
   const queueEnabled = isModuleEnabled(staff.clinics?.settings, "queue");
+  const billingEnabled =
+    isModuleEnabled(staff.clinics?.settings, "billing") &&
+    ["admin", "receptionist"].includes(staff.role);
+  const dispensaryEnabled =
+    isModuleEnabled(staff.clinics?.settings, "dispensary") &&
+    ["admin", "doctor", "nurse"].includes(staff.role);
+  const enquiryEnabled =
+    isModuleEnabled(staff.clinics?.settings, "enquiry") &&
+    ["admin", "receptionist"].includes(staff.role);
+  const attendanceEnabled = isModuleEnabled(staff.clinics?.settings, "attendance");
+  const attendanceAdminEnabled = attendanceEnabled && staff.role === "admin";
   const { start: queueDayStart, end: queueDayEnd } = getTodayUtcBounds();
   const patientQuery = getSingleValue(params.q)?.trim() ?? "";
   const doctorId = getSingleValue(params.doctor)?.trim() ?? "";
@@ -76,7 +87,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     pastEncountersQuery = pastEncountersQuery.lte("encounter_date", normalizedRange.to);
   }
 
-  const [encounterRes, patientRes, doctorRes, pastEncountersRes, queueRes] = await Promise.all([
+  const [encounterRes, patientRes, doctorRes, pastEncountersRes, queueRes, billingRes, dispensaryRes, enquiryRes, attendanceRes, pendingLeaveRes] = await Promise.all([
     activeEncounterCardEnabled
       ? supabase
           .from("encounters")
@@ -111,11 +122,51 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           .gte("checked_in_at", queueDayStart)
           .lt("checked_in_at", queueDayEnd)
       : Promise.resolve({ count: null }),
+    billingEnabled
+      ? supabase
+          .from("invoices")
+          .select("id", { count: "exact", head: true })
+          .eq("clinic_id", staff.clinic_id)
+          .in("status", ["issued", "partial"])
+      : Promise.resolve({ count: null }),
+    dispensaryEnabled
+      ? supabase
+          .from("dispensary_fulfillments")
+          .select("id", { count: "exact", head: true })
+          .eq("clinic_id", staff.clinic_id)
+          .eq("status", "pending")
+      : Promise.resolve({ count: null }),
+    enquiryEnabled
+      ? supabase
+          .from("enquiries")
+          .select("id", { count: "exact", head: true })
+          .eq("clinic_id", staff.clinic_id)
+          .in("status", ["new", "in_progress", "scheduled"])
+      : Promise.resolve({ count: null }),
+    attendanceEnabled
+      ? supabase
+          .from("attendance_records")
+          .select("id", { count: "exact", head: true })
+          .eq("clinic_id", staff.clinic_id)
+          .eq("status", "clocked_in")
+      : Promise.resolve({ count: null }),
+    attendanceAdminEnabled
+      ? supabase
+          .from("leave_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("clinic_id", staff.clinic_id)
+          .eq("status", "pending")
+      : Promise.resolve({ count: null }),
   ]);
 
   const activeEncounters = encounterRes.count ?? 0;
   const totalPatients = patientRes.count ?? 0;
   const waitingQueueCount = queueRes.count ?? 0;
+  const outstandingInvoicesCount = billingRes.count ?? 0;
+  const pendingDispenseCount = dispensaryRes.count ?? 0;
+  const activeEnquiryCount = enquiryRes.count ?? 0;
+  const onDutyStaffCount = attendanceRes.count ?? 0;
+  const pendingLeaveCount = pendingLeaveRes.count ?? 0;
   const pastEncounters = (pastEncountersRes.data ?? []) as PastEncounter[];
   const doctorOptions = doctorRes.data ?? [];
   const totalPastEncounters = pastEncountersRes.count ?? 0;
@@ -163,6 +214,66 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <CardContent>
                 <p className="text-2xl font-bold">{waitingQueueCount}</p>
                 <p className="text-xs text-muted-foreground">Waiting now</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ) : null}
+        {billingEnabled ? (
+          <Link href="/billing">
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Billing</CardTitle>
+                <Receipt className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{outstandingInvoicesCount}</p>
+                <p className="text-xs text-muted-foreground">Outstanding invoices</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ) : null}
+        {dispensaryEnabled ? (
+          <Link href="/dispensary">
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Dispensary</CardTitle>
+                <Pill className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{pendingDispenseCount}</p>
+                <p className="text-xs text-muted-foreground">Pending dispense</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ) : null}
+        {enquiryEnabled ? (
+          <Link href="/enquiry">
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Enquiries</CardTitle>
+                <Phone className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{activeEnquiryCount}</p>
+                <p className="text-xs text-muted-foreground">Active enquiries</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ) : null}
+        {attendanceEnabled ? (
+          <Link href="/attendance">
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Attendance</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{onDutyStaffCount}</p>
+                <p className="text-xs text-muted-foreground">
+                  {attendanceAdminEnabled && pendingLeaveCount > 0
+                    ? `${pendingLeaveCount} pending leave request${pendingLeaveCount === 1 ? "" : "s"}`
+                    : "Staff on duty"}
+                </p>
               </CardContent>
             </Card>
           </Link>

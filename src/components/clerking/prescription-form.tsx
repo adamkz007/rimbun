@@ -58,7 +58,7 @@ export function PrescriptionForm({
     left: number;
     width: number;
   } | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
+  const [isMounted] = useState(() => typeof window !== "undefined");
   const searchContainerRef = useRef<HTMLDivElement | null>(null);
   const listboxId = `prescription-drug-search-${encounterId}`;
   const [form, setForm] = useState({
@@ -98,12 +98,7 @@ export function PrescriptionForm({
   }, []);
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
     if (!showForm || !hasDrugResults) {
-      setDropdownPosition(null);
       return;
     }
 

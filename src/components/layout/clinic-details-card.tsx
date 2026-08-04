@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, MapPin, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,17 +46,17 @@ export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
   const [isPending, startTransition] = useTransition();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const clinicSnapshot = serializeClinicSnapshot(clinic);
-  const initialForm = useMemo(() => getInitialForm(clinic), [clinicSnapshot]);
+  const initialForm = useMemo(() => getInitialForm(clinic), [clinic]);
   const [form, setForm] = useState<ClinicDetailsForm>(initialForm);
   const canEdit = role === "admin";
 
-  useEffect(() => {
-    if (!isDialogOpen) {
+  function handleDialogOpenChange(open: boolean) {
+    setIsDialogOpen(open);
+    if (!open) {
       setForm(initialForm);
       setMessage(null);
     }
-  }, [initialForm, isDialogOpen]);
+  }
 
   if (!clinic) {
     return null;
@@ -89,7 +89,7 @@ export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
             <CardTitle className="text-sm">{clinic.name}</CardTitle>
           </div>
           {canEdit ? (
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
               <DialogTrigger
                 render={
                   <Button
@@ -191,12 +191,4 @@ function getInitialForm(clinic: ClinicDetails | null): ClinicDetailsForm {
     registrationNumber: clinic?.registration_number ?? "",
     address: clinic?.address ?? "",
   };
-}
-
-function serializeClinicSnapshot(clinic: ClinicDetails | null) {
-  return JSON.stringify({
-    name: clinic?.name ?? "",
-    registrationNumber: clinic?.registration_number ?? "",
-    address: clinic?.address ?? "",
-  });
 }

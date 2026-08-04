@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Work_Sans } from "next/font/google";
+import { assertRequiredEnv } from "@/lib/env";
 import "./globals.css";
+
+assertRequiredEnv();
 
 const workSans = Work_Sans({
   variable: "--font-sans",
