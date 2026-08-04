@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit",
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "reference-data:build": "node scripts/reference-data/build-all.mjs",
+    "db:seed:reference": "supabase db execute --local --file supabase/seed/001_reference_data.sql",
     "netlify:status": "pnpm --package=netlify-cli dlx netlify status",
     "netlify:link": "pnpm --package=netlify-cli dlx netlify link --name rimbun",
     "netlify:deploy": "pnpm --package=netlify-cli dlx netlify deploy",

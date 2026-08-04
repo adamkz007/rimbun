@@ -21,9 +21,10 @@
 ```bash
 supabase start
 supabase db reset
+npm run db:seed:reference
 cp .env.example .env.local
 supabase status -o env   # copy URL and keys into .env.local
-pnpm dev
+npm run dev
 ```
 
 Demo users seeded by `supabase/seed/002_bootstrap_clinic.sql`:

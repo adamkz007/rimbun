@@ -9,7 +9,14 @@ major_version = 17
 
 [db.seed]
 enabled = true
-sql_paths = ["./seed/*.sql"]
+sql_paths = [
+  "./seed/002_bootstrap_clinic.sql",
+  "./seed/003_billing_defaults.sql",
+  "./seed/004_dispensary_defaults.sql",
+  "./seed/005_enquiry_defaults.sql",
+  "./seed/006_attendance_defaults.sql",
+  "./seed/007_rls_test_clinic.sql",
+]
 
 [studio]
 enabled = true
