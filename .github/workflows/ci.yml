@@ -42,9 +42,9 @@ jobs:
         run: |
           eval "$(supabase status -o env)"
           {
-            supabase status -o env
-            echo "NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL"
-            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
+            echo "NEXT_PUBLIC_SUPABASE_URL=${API_URL}"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}"
+            echo "SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}"
           } >> "$GITHUB_ENV"
       - run: npm run test:integration
 
@@ -67,11 +67,15 @@ jobs:
         run: |
           eval "$(supabase status -o env)"
           {
-            supabase status -o env
-            echo "NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL"
-            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
-            echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY"
+            echo "NEXT_PUBLIC_SUPABASE_URL=${API_URL}"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}"
+            echo "SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}"
           } >> "$GITHUB_ENV"
+          cat > .env.local <<EOF
+          NEXT_PUBLIC_SUPABASE_URL=${API_URL}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
+          SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}
+          EOF
       - run: npm run build
 
   e2e:
@@ -97,17 +101,16 @@ jobs:
         run: |
           eval "$(supabase status -o env)"
           {
-            supabase status -o env
-            echo "NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL"
-            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
-            echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY"
+            echo "NEXT_PUBLIC_SUPABASE_URL=${API_URL}"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}"
+            echo "SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}"
             echo "PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000"
             echo "CI=true"
           } >> "$GITHUB_ENV"
           cat > .env.local <<EOF
-          NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL
-          NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
-          SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+          NEXT_PUBLIC_SUPABASE_URL=${API_URL}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
+          SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}
           EOF
       - run: npm run build
       - run: npx playwright install --with-deps chromium
