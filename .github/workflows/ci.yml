@@ -37,7 +37,7 @@ jobs:
       - name: Load reference data seed
         run: |
           eval "$(supabase status -o env)"
-          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/seed/001_reference_data.sql
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/seed/001_reference_data_ci.sql
       - name: Export Supabase env
         run: |
           eval "$(supabase status -o env)"
@@ -63,10 +63,6 @@ jobs:
       - run: npm ci
       - run: supabase start
       - run: supabase db reset
-      - name: Load reference data seed
-        run: |
-          eval "$(supabase status -o env)"
-          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/seed/001_reference_data.sql
       - name: Write env for build
         run: |
           eval "$(supabase status -o env)"
@@ -96,7 +92,7 @@ jobs:
       - name: Load reference data seed
         run: |
           eval "$(supabase status -o env)"
-          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/seed/001_reference_data.sql
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/seed/001_reference_data_ci.sql
       - name: Write env for app and tests
         run: |
           eval "$(supabase status -o env)"
