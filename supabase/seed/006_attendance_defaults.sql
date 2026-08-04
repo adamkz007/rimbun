@@ -21,7 +21,7 @@ insert into staff_shifts (
 select
   clinics.id,
   target_staff.id,
-  (current_date + offset.days)::date,
+  (current_date + sample.days)::date,
   sample.start_time::time,
   sample.end_time::time,
   sample.notes,
