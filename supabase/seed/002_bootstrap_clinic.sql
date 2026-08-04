@@ -84,7 +84,7 @@ begin
       updated_at
     )
     values (
-      v_admin_user_id::text,
+      v_admin_user_id,
       v_admin_user_id,
       format('{"sub":"%s","email":"admin@demo.rimbun.local"}', v_admin_user_id)::jsonb,
       'email',
@@ -137,7 +137,7 @@ begin
       updated_at
     )
     values (
-      v_doctor_user_id::text,
+      v_doctor_user_id,
       v_doctor_user_id,
       format('{"sub":"%s","email":"doctor@demo.rimbun.local"}', v_doctor_user_id)::jsonb,
       'email',
@@ -190,7 +190,7 @@ begin
       updated_at
     )
     values (
-      v_nurse_user_id::text,
+      v_nurse_user_id,
       v_nurse_user_id,
       format('{"sub":"%s","email":"nurse@demo.rimbun.local"}', v_nurse_user_id)::jsonb,
       'email',
@@ -243,7 +243,7 @@ begin
       updated_at
     )
     values (
-      v_reception_user_id::text,
+      v_reception_user_id,
       v_reception_user_id,
       format('{"sub":"%s","email":"reception@demo.rimbun.local"}', v_reception_user_id)::jsonb,
       'email',
