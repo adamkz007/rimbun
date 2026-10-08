@@ -14,6 +14,9 @@ export const STAFF_ROLES: StaffRole[] = ["admin", "doctor", "nurse", "receptioni
 
 export const PUBLIC_PATHS = new Set(["/", "/login"]);
 
+/** Public sections (and everything below them). */
+export const PUBLIC_PATH_PREFIXES = ["/diagnose", "/api/diagnose"];
+
 const PROTECTED_ROUTE_RULES: RouteAccessRule[] = [
   { pathPrefix: "/dashboard", roles: STAFF_ROLES },
   { pathPrefix: "/clerking", roles: ["doctor", "nurse"], module: "clerking" },
@@ -29,7 +32,10 @@ const PROTECTED_ROUTE_RULES: RouteAccessRule[] = [
 ];
 
 export function isPublicPath(pathname: string) {
-  return PUBLIC_PATHS.has(pathname);
+  return (
+    PUBLIC_PATHS.has(pathname) ||
+    PUBLIC_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+  );
 }
 
 export function hasRoleAccess(role: StaffRole, roles?: StaffRole[]) {

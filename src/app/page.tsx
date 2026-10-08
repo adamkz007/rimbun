@@ -136,6 +136,15 @@ export default function Home() {
                   <ArrowRight className="size-4" />
                 </Link>
                 <Link
+                  href="/diagnose"
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "lg" }),
+                    "h-12 rounded-full border border-white/14 bg-white/6 px-5 text-[#f6f0e8] hover:bg-white/12 hover:text-white"
+                  )}
+                >
+                  Check your pain (AI)
+                </Link>
+                <Link
                   href="#features"
                   className={cn(
                     buttonVariants({ variant: "ghost", size: "lg" }),

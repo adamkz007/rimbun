@@ -231,6 +231,10 @@ export type Database = {
         Args: { p_clinic_id: string };
         Returns: number;
       };
+      consume_diagnose_quota: {
+        Args: { p_bucket: string; p_limit: number; p_window_seconds: number };
+        Returns: boolean;
+      };
     };
   };
 };
