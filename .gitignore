@@ -53,3 +53,9 @@ docs/
 
 # Netlify edge build artifact
 deno.lock
+
+# anatomy build cache
+/scripts/anatomy/.cache
+
+# env example
+!.env.example

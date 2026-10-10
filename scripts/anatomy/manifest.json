@@ -1,0 +1,542 @@
+{
+  "source": "https://www.openanatomy.org/atlases",
+  "license": "3D Slicer License, section B (https://www.slicer.org/LICENSE). Not for clinical use.",
+  "defaultMaxTriangles": 2500,
+  "atlases": [
+    {
+      "id": "brain",
+      "path": "nac/brain-2017-01",
+      "title": "SPL/PNL/NAC Brain Atlas",
+      "citation": "Halle M, Talos I-F, Jakab M, et al. Multi-modality MRI-based Atlas of the Brain. SPL, 2017. http://www.spl.harvard.edu/publications/item/view/2037",
+      "placement": {
+        "anchor": "head_skin",
+        "align": [
+          "center",
+          "max",
+          "center"
+        ],
+        "target": [
+          0,
+          1.75,
+          -0.005
+        ]
+      },
+      "structures": [
+        {
+          "key": "head_skin",
+          "from": [
+            "#skin"
+          ],
+          "maxTriangles": 6000
+        },
+        {
+          "key": "cerebrum",
+          "from": [
+            "#left_frontal_lobe",
+            "#left_parietal_lobe",
+            "#left_temporal_lobe",
+            "#left_occipital_lobe",
+            "#left_limbic_lobe",
+            "#left_insula__0",
+            "#right_frontal_lobe",
+            "#right_parietal_lobe",
+            "#right_temporal_lobe",
+            "#right_occipital_lobe",
+            "#right_limbic_lobe",
+            "#right_insula__0"
+          ],
+          "exclude": [
+            "#left_postcentral_gyrus",
+            "#right_postcentral_gyrus"
+          ],
+          "color": "rgb(232,190,172)",
+          "maxTriangles": 16000
+        },
+        {
+          "key": "somatosensory_cortex",
+          "from": [
+            "#left_postcentral_gyrus",
+            "#right_postcentral_gyrus"
+          ],
+          "color": "rgb(240,120,90)",
+          "maxTriangles": 4000
+        },
+        {
+          "key": "thalamus",
+          "from": [
+            "#thalamus"
+          ],
+          "color": "rgb(0,145,180)",
+          "maxTriangles": 2500
+        },
+        {
+          "key": "cerebellum",
+          "from": [
+            "#cerebellum"
+          ],
+          "color": "rgb(220,200,150)",
+          "maxTriangles": 5000
+        },
+        {
+          "key": "brainstem",
+          "from": [
+            "#pons",
+            "#medulla_oblongata",
+            "#part_of_midbrain"
+          ],
+          "color": "rgb(200,170,140)",
+          "maxTriangles": 2500
+        },
+        {
+          "key": "eyes",
+          "from": [
+            "#Eyeballs"
+          ],
+          "color": "rgb(240,240,235)",
+          "maxTriangles": 1200
+        },
+        {
+          "key": "jaw_muscles",
+          "from": [
+            "#Muscles_of_Mastication"
+          ],
+          "color": "rgb(192,104,88)",
+          "maxTriangles": 2500
+        }
+      ]
+    },
+    {
+      "id": "thorax",
+      "path": "macbioidi/mauritania/thorax-2020-11-15",
+      "title": "Mauritanian Thoracic Atlas",
+      "citation": "Open Anatomy Project / MACbioIDi, Mauritanian Thoracic Atlas, 2020. https://www.openanatomy.org/atlas-pages/atlas-mauritania-thorax.html",
+      "placement": {
+        "anchor": "thoracic_spine",
+        "align": [
+          "center",
+          "max",
+          "center"
+        ],
+        "target": [
+          0,
+          1.47,
+          -0.05
+        ]
+      },
+      "structures": [
+        {
+          "key": "heart",
+          "from": [
+            "#heart"
+          ],
+          "maxTriangles": 5000
+        },
+        {
+          "key": "coronary_arteries",
+          "from": [
+            "#right_coronary_artery",
+            "#left_coronary_artery",
+            "#anterior_interventricular_artery",
+            "#inferior_interventricular_artery"
+          ],
+          "maxTriangles": 2500
+        },
+        {
+          "key": "thoracic_aorta",
+          "from": [
+            "#aorta"
+          ],
+          "maxTriangles": 2500
+        },
+        {
+          "key": "pulmonary_vessels",
+          "from": [
+            "#pulmonary_trunk",
+            "#pulmonary_arteries",
+            "#pulmonary_veins"
+          ],
+          "maxTriangles": 3000
+        },
+        {
+          "key": "vena_cava",
+          "from": [
+            "#superior_vena_cava",
+            "#inferior_vena_cava"
+          ],
+          "maxTriangles": 1500
+        },
+        {
+          "key": "right_lung",
+          "from": [
+            "#right_lung"
+          ],
+          "color": "rgb(197,165,145)",
+          "maxTriangles": 6000
+        },
+        {
+          "key": "left_lung",
+          "from": [
+            "#left_lung"
+          ],
+          "color": "rgb(197,165,145)",
+          "maxTriangles": 6000
+        },
+        {
+          "key": "airway",
+          "from": [
+            "#trachea",
+            "#carina_of_trachea",
+            "#main_bronchi",
+            "#lobar_bronchi"
+          ],
+          "maxTriangles": 3000
+        },
+        {
+          "key": "esophagus",
+          "from": [
+            "#esophagus"
+          ],
+          "maxTriangles": 1500
+        },
+        {
+          "key": "ribs",
+          "from": [
+            "#ribs",
+            "#costal_cartilages"
+          ],
+          "color": "rgb(241,214,145)",
+          "maxTriangles": 12000
+        },
+        {
+          "key": "sternum",
+          "from": [
+            "#manubrium_of_sternum",
+            "#body_of_sternum",
+            "#xiphoid_process"
+          ],
+          "color": "rgb(241,214,145)",
+          "maxTriangles": 2000
+        },
+        {
+          "key": "shoulder_girdle",
+          "from": [
+            "#clavicle",
+            "#scapula",
+            "#sternoclavicular_joint"
+          ],
+          "color": "rgb(241,214,145)",
+          "maxTriangles": 5000
+        },
+        {
+          "key": "thoracic_spine",
+          "from": [
+            "#vertebra",
+            "#intervertebral_discs"
+          ],
+          "color": "rgb(241,214,145)",
+          "maxTriangles": 8000
+        }
+      ]
+    },
+    {
+      "id": "abdomen",
+      "path": "nac/abdomen-2016-09",
+      "title": "SPL Abdominal Atlas",
+      "citation": "Talos I-F, Jakab M, Kikinis R. SPL Abdominal Atlas. SPL, 2016. http://www.spl.harvard.edu/publications/item/view/1266",
+      "placement": {
+        "anchor": "lumbar_spine",
+        "align": [
+          "center",
+          "max",
+          "center"
+        ],
+        "target": [
+          0,
+          1.2,
+          -0.035
+        ]
+      },
+      "structures": [
+        {
+          "key": "liver",
+          "from": [
+            "#liver"
+          ],
+          "maxTriangles": 5000
+        },
+        {
+          "key": "gallbladder",
+          "from": [
+            "#gallbladder"
+          ],
+          "maxTriangles": 1200
+        },
+        {
+          "key": "stomach",
+          "from": [
+            "#stomach_and_duodenum"
+          ],
+          "maxTriangles": 4000
+        },
+        {
+          "key": "pancreas",
+          "from": [
+            "#pancreas"
+          ],
+          "maxTriangles": 2000
+        },
+        {
+          "key": "spleen",
+          "from": [
+            "#spleen"
+          ],
+          "maxTriangles": 2000
+        },
+        {
+          "key": "right_kidney",
+          "from": [
+            "#right_kidney",
+            "#right_renal_pelvis",
+            "#right_adrenal_gland"
+          ],
+          "maxTriangles": 2500
+        },
+        {
+          "key": "left_kidney",
+          "from": [
+            "#left_kidney",
+            "#left_renal_pelvis",
+            "#left_adrenal_gland"
+          ],
+          "maxTriangles": 2500
+        },
+        {
+          "key": "ureters",
+          "from": [
+            "#left_ureter",
+            "#right_ureter"
+          ],
+          "maxTriangles": 1200
+        },
+        {
+          "key": "intestines",
+          "from": [
+            "#colon_and_ileum"
+          ],
+          "maxTriangles": 8000
+        },
+        {
+          "key": "abdominal_aorta",
+          "from": [
+            "#aorta",
+            "#left_common_iliac_artery",
+            "#right_common_iliac_artery",
+            "#left_external_iliac_artery",
+            "#right_external_iliac_artery"
+          ],
+          "maxTriangles": 2500
+        },
+        {
+          "key": "lumbar_spine",
+          "from": [
+            "#Lumbar1",
+            "#Lumbar2",
+            "#Lumbar3",
+            "#Lumbar4",
+            "#Lumbar5",
+            "#L2-L1-IntervertebralDisc",
+            "#L3-L2-IntervertebralDisc",
+            "#L4-L3-IntervertebralDisc",
+            "#L5-L4-IntervertebralDisc",
+            "#Sacrum-L5-IntervertebralDisc",
+            "#L1-T12-IntervertebralDisc"
+          ],
+          "color": "rgb(241,214,145)",
+          "maxTriangles": 8000
+        },
+        {
+          "key": "pelvis",
+          "from": [
+            "#Pelvis",
+            "#Sacrum"
+          ],
+          "color": "rgb(241,214,145)",
+          "maxTriangles": 8000
+        },
+        {
+          "key": "back_muscles",
+          "from": [
+            "#left_erector_spinae_muscle",
+            "#right_erector_spinae_muscle",
+            "#left_quadratus_lumborum_muscle",
+            "#right_quadratus_lumborum_muscle"
+          ],
+          "color": "rgb(192,104,88)",
+          "maxTriangles": 4000
+        },
+        {
+          "key": "hip_flexors",
+          "from": [
+            "#left_psoas_muscle",
+            "#right_psoas_muscle",
+            "#left_iliacus_muscle",
+            "#right_iliacus_muscle"
+          ],
+          "color": "rgb(192,104,88)",
+          "maxTriangles": 3000
+        },
+        {
+          "key": "abdominal_wall",
+          "from": [
+            "#rectus_abdominis_muscle",
+            "#left_external_oblique_muscle",
+            "#right_external_oblique_muscle",
+            "#left_internal_oblique_muscle",
+            "#right_internal_oblique_muscle"
+          ],
+          "color": "rgb(192,104,88)",
+          "maxTriangles": 5000
+        },
+        {
+          "key": "gluteal_muscles",
+          "from": [
+            "#left_gluteus_maximus_muscle",
+            "#right_gluteus_maximus_muscle",
+            "#left_gluteus_medius_muscle",
+            "#right_gluteus_medius_muscle",
+            "#left_gluteus_minimus_muscle",
+            "#right_gluteus_minimus_muscle"
+          ],
+          "color": "rgb(192,104,88)",
+          "maxTriangles": 5000
+        }
+      ]
+    },
+    {
+      "id": "knee",
+      "path": "nac/knee-2016-09",
+      "title": "SPL Knee Atlas",
+      "citation": "Richolt JA, Jakab M, Kikinis R. SPL Knee Atlas. SPL, 2016. http://www.spl.harvard.edu/publications/item/view/1953",
+      "placement": {
+        "anchor": "menisci",
+        "align": [
+          "center",
+          "center",
+          "center"
+        ],
+        "target": [
+          0.095,
+          0.49,
+          0
+        ]
+      },
+      "mirror": "x",
+      "structures": [
+        {
+          "key": "femur",
+          "from": [
+            "#femur"
+          ],
+          "color": "rgb(241,214,145)",
+          "maxTriangles": 4000
+        },
+        {
+          "key": "tibia",
+          "from": [
+            "#tibia"
+          ],
+          "color": "rgb(241,214,145)",
+          "maxTriangles": 4000
+        },
+        {
+          "key": "fibula",
+          "from": [
+            "#fibula"
+          ],
+          "color": "rgb(241,214,145)",
+          "maxTriangles": 1500
+        },
+        {
+          "key": "patella",
+          "from": [
+            "#patella"
+          ],
+          "color": "rgb(241,214,145)",
+          "maxTriangles": 1200
+        },
+        {
+          "key": "knee_cartilage",
+          "from": [
+            "#Cartilages"
+          ],
+          "maxTriangles": 3000
+        },
+        {
+          "key": "menisci",
+          "from": [
+            "#Meniscus"
+          ],
+          "maxTriangles": 2000
+        },
+        {
+          "key": "cruciate_ligaments",
+          "from": [
+            "#anterior_cruciate_ligament",
+            "#posterior_cruciate_ligament"
+          ],
+          "maxTriangles": 1500
+        },
+        {
+          "key": "collateral_ligaments",
+          "from": [
+            "#tibial_collateral_ligament",
+            "#fibular_collateral_ligament"
+          ],
+          "maxTriangles": 1500
+        },
+        {
+          "key": "patellar_tendon",
+          "from": [
+            "#patellar_ligament"
+          ],
+          "maxTriangles": 1000
+        },
+        {
+          "key": "knee_nerves",
+          "from": [
+            "#Nerves"
+          ],
+          "maxTriangles": 1500
+        },
+        {
+          "key": "thigh_muscles",
+          "from": [
+            "#vastus_medialis_muscle",
+            "#vastus_lateralis_muscle",
+            "#biceps_femoris_muscle",
+            "#semimembranosus_muscle",
+            "#semitendinosus_muscle",
+            "#sartorius_muscle",
+            "#gracilis_muscle"
+          ],
+          "color": "rgb(192,104,88)",
+          "maxTriangles": 6000
+        },
+        {
+          "key": "calf_muscles",
+          "from": [
+            "#medial_head_gastrocnemius_muscle",
+            "#lateral_head_gastrocnemius_muscle",
+            "#soleus_muscle",
+            "#popliteus_muscle",
+            "#tibialis_anterior_muscle",
+            "#peroneus_longus_muscle",
+            "#extensor_digitorum_longus_muscle"
+          ],
+          "color": "rgb(192,104,88)",
+          "maxTriangles": 6000
+        }
+      ]
+    }
+  ]
+}
