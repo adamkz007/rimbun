@@ -26,6 +26,7 @@ export const metadata: Metadata = {
     "Calm, modern clinic management for general practice teams, with a clerking workspace built for real consultations.",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
