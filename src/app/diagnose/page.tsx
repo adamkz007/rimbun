@@ -18,11 +18,11 @@ export default function DiagnosePage() {
       <div className="mx-auto w-full max-w-7xl px-4 pt-5 pb-12 sm:px-8 lg:px-10">
         <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <Link href="/" className="inline-flex items-center gap-2.5 text-inherit">
-            <span className="inline-flex size-9 items-center justify-center rounded-full bg-[#083a39] text-[#dff7f1]">
-              <RimbunMark className="size-6" />
-            </span>
+            <RimbunMark className="size-9" />
             <span>
-              <span className="block text-sm font-semibold tracking-[0.08em] uppercase">Rimbun</span>
+              <span className="block font-brand text-xl font-extrabold leading-none tracking-[-0.035em] text-[#12382A]">
+                rimbun
+              </span>
               <span className="block text-xs text-[#5f7a76]">Pain checker · AI-assisted</span>
             </span>
           </Link>
