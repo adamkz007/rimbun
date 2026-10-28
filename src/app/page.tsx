@@ -86,12 +86,10 @@ export default function Home() {
         <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-8 sm:px-10 lg:px-12">
           <header className="flex items-center justify-between">
             <Link href="/" className="inline-flex items-center gap-3 text-inherit">
-              <span className="inline-flex size-11 items-center justify-center rounded-full border border-white/15 bg-white/6 text-[#dff7f1] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur">
-                <RimbunMark className="size-7" />
-              </span>
+              <RimbunMark variant="reversed" className="size-10" />
               <span>
-                <span className="block text-lg font-semibold tracking-[0.08em] uppercase">
-                  Rimbun
+                <span className="block font-brand text-2xl font-extrabold leading-none tracking-[-0.035em]">
+                  rimbun
                 </span>
                 <span className="block text-xs text-[#d5e8e3]/72">
                   Clinic Operations Software

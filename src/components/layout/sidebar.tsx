@@ -15,7 +15,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { RimbunMark } from "@/components/branding/rimbun-logo";
+import { RimbunLogo } from "@/components/branding/rimbun-logo";
 import { ClinicDetailsCard } from "@/components/layout/clinic-details-card";
 import { isModuleVisibleInNav } from "@/lib/modules";
 import { hasAccess } from "@/lib/rbac";
@@ -77,8 +77,7 @@ export function Sidebar({
     <>
       <div className="flex h-14 items-center border-b px-4">
         <Link href="/dashboard" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
-          <RimbunMark className="h-5 w-5 text-primary" />
-          <span className="font-semibold">Rimbun</span>
+          <RimbunLogo className="text-xl" />
         </Link>
         <button
           type="button"

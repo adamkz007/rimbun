@@ -1,11 +1,13 @@
 <svg width="320" height="96" viewBox="0 0 320 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="320" height="96" rx="24" fill="#F6F0E8"/>
-  <g transform="translate(18 15)" stroke="#0F5A53" stroke-width="3" stroke-linecap="round">
-    <path d="M24 47C19.5817 47 16 43.4183 16 39C16 35.9338 17.7252 33.2706 20.2587 31.9259C20.0886 31.3013 20 30.6438 20 29.9658C20 25.8491 23.2386 22.4686 27.2982 22.2418C28.8244 18.5217 32.4856 16 36.5 16C40.9693 16 44.781 19.1234 45.6517 23.5078C47.5637 24.8139 48.8205 27.0127 48.8205 29.5055C48.8205 31.6707 47.8708 33.614 46.3649 34.9444C47.3633 36.1116 48 37.6272 48 39.2917C48 43.0116 44.9899 46.0299 41.2796 46.0436H24V47Z"/>
-    <path d="M32 30V48" stroke="#66E2CF" stroke-width="3.5"/>
-    <path d="M32 36L27 41" stroke="#66E2CF"/>
-    <path d="M32 39L38 45" stroke="#66E2CF"/>
+  <g transform="translate(8 8) scale(0.4)">
+    <g transform="rotate(45 100 100)"><path d="M100 86C89 74 89 54 100 40Z" fill="#12382A"/><path d="M100 86C111 74 111 54 100 40Z" fill="#2E7D55"/></g>
+    <g transform="rotate(135 100 100)"><path d="M100 86C89 74 89 54 100 40Z" fill="#12382A"/><path d="M100 86C111 74 111 54 100 40Z" fill="#2E7D55"/></g>
+    <g transform="rotate(225 100 100)"><path d="M100 86C89 74 89 54 100 40Z" fill="#12382A"/><path d="M100 86C111 74 111 54 100 40Z" fill="#2E7D55"/></g>
+    <g transform="rotate(315 100 100)"><path d="M100 86C89 74 89 54 100 40Z" fill="#12382A"/><path d="M100 86C111 74 111 54 100 40Z" fill="#2E7D55"/></g>
+    <path d="M100 90C76 72 76 40 100 14Z" fill="#12382A"/><path d="M100 90C124 72 124 40 100 14Z" fill="#2E7D55"/>
+    <g transform="rotate(90 100 100)"><path d="M100 90C76 72 76 40 100 14Z" fill="#12382A"/><path d="M100 90C124 72 124 40 100 14Z" fill="#2E7D55"/></g>
+    <g transform="rotate(180 100 100)"><path d="M100 90C76 72 76 40 100 14Z" fill="#12382A"/><path d="M100 90C124 72 124 40 100 14Z" fill="#2E7D55"/></g>
+    <g transform="rotate(270 100 100)"><path d="M100 90C76 72 76 40 100 14Z" fill="#12382A"/><path d="M100 90C124 72 124 40 100 14Z" fill="#2E7D55"/></g>
   </g>
-  <text x="95" y="44" fill="#143632" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="700" letter-spacing="1.4">RIMBUN</text>
-  <text x="96" y="64" fill="#5F7773" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="500" letter-spacing="2.8"></text>
+  <text x="94" y="64" fill="#12382A" font-family="'Plus Jakarta Sans', 'Work Sans', Arial, sans-serif" font-size="50" font-weight="800" letter-spacing="-1.75">rimbun</text>
 </svg>
