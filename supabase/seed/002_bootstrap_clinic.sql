@@ -28,7 +28,8 @@ begin
         "queue": true,
         "billing": false,
         "dispensary": false,
-        "attendance": false
+        "attendance": false,
+        "loop": true
       }
     }'::jsonb
   )
@@ -83,7 +84,7 @@ begin
       updated_at
     )
     values (
-      v_admin_user_id::text,
+      v_admin_user_id,
       v_admin_user_id,
       format('{"sub":"%s","email":"admin@demo.rimbun.local"}', v_admin_user_id)::jsonb,
       'email',
@@ -136,7 +137,7 @@ begin
       updated_at
     )
     values (
-      v_doctor_user_id::text,
+      v_doctor_user_id,
       v_doctor_user_id,
       format('{"sub":"%s","email":"doctor@demo.rimbun.local"}', v_doctor_user_id)::jsonb,
       'email',
@@ -189,7 +190,7 @@ begin
       updated_at
     )
     values (
-      v_nurse_user_id::text,
+      v_nurse_user_id,
       v_nurse_user_id,
       format('{"sub":"%s","email":"nurse@demo.rimbun.local"}', v_nurse_user_id)::jsonb,
       'email',
@@ -242,7 +243,7 @@ begin
       updated_at
     )
     values (
-      v_reception_user_id::text,
+      v_reception_user_id,
       v_reception_user_id,
       format('{"sub":"%s","email":"reception@demo.rimbun.local"}', v_reception_user_id)::jsonb,
       'email',
@@ -307,4 +308,13 @@ begin
     role = excluded.role,
     mmc_number = excluded.mmc_number,
     is_active = excluded.is_active;
+
+  -- GoTrue cannot read hand-inserted users whose token columns are NULL.
+  update auth.users
+  set
+    confirmation_token = coalesce(confirmation_token, ''),
+    recovery_token = coalesce(recovery_token, ''),
+    email_change_token_new = coalesce(email_change_token_new, ''),
+    email_change = coalesce(email_change, '')
+  where email like '%@demo.rimbun.local';
 end $$;

@@ -10,7 +10,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Users, ClipboardPen, LayoutDashboard, Settings } from "lucide-react";
+import { Users, ClipboardPen, LayoutDashboard, Repeat2, Settings } from "lucide-react";
 import { hasAccess } from "@/lib/rbac";
 import type { ClinicSettings, StaffRole } from "@/types/database";
 
@@ -50,6 +50,18 @@ export function CommandPalette({
       }),
     },
     { path: "/patients", label: "Patients", icon: Users, visible: true },
+    {
+      path: "/cases",
+      label: "Care Loop",
+      icon: Repeat2,
+      visible: hasAccess({
+        role,
+        clinicSettings,
+        access: {
+          module: "loop",
+        },
+      }),
+    },
     {
       path: "/settings",
       label: "Settings",

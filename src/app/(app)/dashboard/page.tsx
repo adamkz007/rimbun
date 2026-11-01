@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
-import { ClipboardPen, Filter, ListOrdered, RotateCcw, Search, Users } from "lucide-react";
+import { ClipboardPen, Filter, ListOrdered, Repeat2, RotateCcw, Search, Users } from "lucide-react";
 import Link from "next/link";
 import type { Tables } from "@/types/database";
 
@@ -39,6 +39,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const activeEncounterCardEnabled =
     ["doctor", "nurse"].includes(staff.role) && clerkingEnabled;
   const queueEnabled = isModuleEnabled(staff.clinics?.settings, "queue");
+  const loopEnabled = isModuleEnabled(staff.clinics?.settings, "loop");
   const { start: queueDayStart, end: queueDayEnd } = getTodayUtcBounds();
   const patientQuery = getSingleValue(params.q)?.trim() ?? "";
   const doctorId = getSingleValue(params.doctor)?.trim() ?? "";
@@ -76,7 +77,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     pastEncountersQuery = pastEncountersQuery.lte("encounter_date", normalizedRange.to);
   }
 
-  const [encounterRes, patientRes, doctorRes, pastEncountersRes, queueRes] = await Promise.all([
+  const [encounterRes, patientRes, doctorRes, pastEncountersRes, queueRes, loopOpenRes, loopOverdueRes] = await Promise.all([
     activeEncounterCardEnabled
       ? supabase
           .from("encounters")
@@ -111,6 +112,21 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           .gte("checked_in_at", queueDayStart)
           .lt("checked_in_at", queueDayEnd)
       : Promise.resolve({ count: null }),
+    loopEnabled
+      ? supabase
+          .from("result_cases")
+          .select("id", { count: "exact", head: true })
+          .eq("clinic_id", staff.clinic_id)
+          .neq("state", "closed")
+      : Promise.resolve({ count: null }),
+    loopEnabled
+      ? supabase
+          .from("result_cases")
+          .select("id", { count: "exact", head: true })
+          .eq("clinic_id", staff.clinic_id)
+          .neq("state", "closed")
+          .lt("current_step_due_at", new Date().toISOString())
+      : Promise.resolve({ count: null }),
   ]);
 
   const activeEncounters = encounterRes.count ?? 0;
@@ -126,7 +142,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Good {getGreeting()}, {staff?.full_name?.split(" ")[0]}</h1>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {activeEncounterCardEnabled && (
           <Link href="/clerking">
             <Card className="hover:border-primary/50 transition-colors cursor-pointer">
@@ -163,6 +179,22 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <CardContent>
                 <p className="text-2xl font-bold">{waitingQueueCount}</p>
                 <p className="text-xs text-muted-foreground">Waiting now</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ) : null}
+        {loopEnabled ? (
+          <Link href={(loopOverdueRes.count ?? 0) > 0 ? "/cases?list=overdue" : "/cases"}>
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Result follow-ups</CardTitle>
+                <Repeat2 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{loopOpenRes.count ?? 0}</p>
+                <p className={(loopOverdueRes.count ?? 0) > 0 ? "text-xs font-medium text-destructive" : "text-xs text-muted-foreground"}>
+                  {(loopOverdueRes.count ?? 0) > 0 ? `${loopOverdueRes.count} overdue` : "Open, none overdue"}
+                </p>
               </CardContent>
             </Card>
           </Link>

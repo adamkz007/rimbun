@@ -48,13 +48,21 @@ export type Database = {
           emergency_contact_phone: string | null;
           allergies: string[];
           medical_history: Record<string, unknown>;
+          preferred_language: "en" | "ms";
+          messaging_consent_at: string | null;
           archived_at: string | null;
           archived_reason: string | null;
           merged_into_patient_id: string | null;
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["patients"]["Row"], "id" | "created_at" | "updated_at">;
+        Insert: Omit<
+          Database["public"]["Tables"]["patients"]["Row"],
+          "id" | "created_at" | "updated_at" | "preferred_language" | "messaging_consent_at"
+        > & {
+          preferred_language?: "en" | "ms";
+          messaging_consent_at?: string | null;
+        };
         Update: Partial<Database["public"]["Tables"]["patients"]["Insert"]>;
       };
       encounters: {
@@ -221,6 +229,142 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["queue_entries"]["Insert"]>;
       };
+      screening_results: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          patient_id: string | null;
+          unmatched_name: string | null;
+          unmatched_identifier: string | null;
+          test_code: string;
+          value_numeric: number | null;
+          value_text: string | null;
+          collected_on: string | null;
+          reported_at: string;
+          source: string | null;
+          notes: string | null;
+          suggested_urgency: CaseUrgency | null;
+          triage_status: ResultTriageStatus;
+          triaged_by: string | null;
+          triaged_at: string | null;
+          triage_note: string | null;
+          entered_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["screening_results"]["Row"]> &
+          Pick<Database["public"]["Tables"]["screening_results"]["Row"], "clinic_id" | "test_code">;
+        Update: Partial<Database["public"]["Tables"]["screening_results"]["Row"]>;
+      };
+      result_cases: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          patient_id: string;
+          result_id: string;
+          test_code: string;
+          urgency: CaseUrgency;
+          next_step: CaseNextStep;
+          next_step_note: string | null;
+          state: CaseStateValue;
+          owner_staff_id: string;
+          opened_by: string;
+          opened_at: string;
+          state_entered_at: string;
+          current_step_due_at: string | null;
+          appointment_at: string | null;
+          surveillance_due_on: string | null;
+          contact_attempts: number;
+          reminders_sent: number;
+          notified_at: string | null;
+          acknowledged_at: string | null;
+          understanding_correct: boolean | null;
+          care_started_at: string | null;
+          referral_rejected_at: string | null;
+          closed_at: string | null;
+          closed_by: string | null;
+          closure_reason: CaseClosureReason | null;
+          closure_note: string | null;
+          reopened_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["result_cases"]["Row"]> &
+          Pick<
+            Database["public"]["Tables"]["result_cases"]["Row"],
+            "clinic_id" | "patient_id" | "result_id" | "test_code" | "urgency" | "next_step" | "owner_staff_id" | "opened_by"
+          >;
+        Update: Partial<Database["public"]["Tables"]["result_cases"]["Row"]>;
+      };
+      case_events: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          case_id: string;
+          event_type: string;
+          from_state: CaseStateValue | null;
+          to_state: CaseStateValue | null;
+          actor_staff_id: string | null;
+          actor_label: string | null;
+          note: string | null;
+          data: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["case_events"]["Row"]> &
+          Pick<Database["public"]["Tables"]["case_events"]["Row"], "clinic_id" | "case_id" | "event_type">;
+        Update: never;
+      };
+      patient_messages: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          case_id: string;
+          channel: "whatsapp" | "sms" | "call" | "in_person";
+          kind: "result_notice" | "reminder" | "call_log";
+          language: "en" | "ms";
+          token_hash: string | null;
+          expires_at: string | null;
+          sent_by: string | null;
+          sent_at: string;
+          opened_at: string | null;
+          verified_at: string | null;
+          responded_at: string | null;
+          response: "understood" | "question" | "call_me" | null;
+          understanding_correct: boolean | null;
+          call_outcome: "reached" | "no_answer" | "wrong_number" | null;
+          note: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["patient_messages"]["Row"]> &
+          Pick<Database["public"]["Tables"]["patient_messages"]["Row"], "clinic_id" | "case_id" | "channel" | "kind">;
+        Update: Partial<Database["public"]["Tables"]["patient_messages"]["Row"]>;
+      };
+      referrals: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          case_id: string;
+          receiving_facility: string;
+          receiving_clinician: string | null;
+          specialty: string | null;
+          letter: string;
+          status: ReferralStatus;
+          token_hash: string;
+          expires_at: string;
+          created_by: string;
+          created_at: string;
+          viewed_at: string | null;
+          responded_at: string | null;
+          reject_reason: string | null;
+          appointment_on: string | null;
+          outcome_note: string | null;
+          attended_on: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["referrals"]["Row"]> &
+          Pick<
+            Database["public"]["Tables"]["referrals"]["Row"],
+            "clinic_id" | "case_id" | "receiving_facility" | "letter" | "token_hash" | "expires_at" | "created_by"
+          >;
+        Update: Partial<Database["public"]["Tables"]["referrals"]["Row"]>;
+      };
     };
     Functions: {
       get_user_clinic_id: {
@@ -244,6 +388,27 @@ export type QueueStatus = "waiting" | "with_nurse" | "with_doctor" | "completed"
 export type QueueArrivalType = "walk_in" | "appointment";
 export type EncounterStatus = "in_progress" | "completed" | "amended";
 export type NoteSection = "chief_complaint" | "history" | "examination" | "diagnosis" | "general_notes";
+export type CaseUrgency = "routine" | "soon" | "urgent" | "critical";
+export type ResultTriageStatus = "pending" | "normal" | "actionable";
+export type CaseNextStep = "clinic_review" | "repeat_test" | "referral" | "same_day_review";
+export type CaseStateValue =
+  | "triaged"
+  | "notified"
+  | "acknowledged"
+  | "confirmed"
+  | "referred"
+  | "accepted"
+  | "attended"
+  | "in_care"
+  | "closed";
+export type CaseClosureReason =
+  | "completed"
+  | "resolved_on_repeat"
+  | "care_elsewhere"
+  | "declined"
+  | "lost_to_follow_up"
+  | "deceased";
+export type ReferralStatus = "sent" | "viewed" | "accepted" | "rejected" | "booked" | "attended";
 export type DrugRoute = "oral" | "topical" | "injection" | "inhalation" | "sublingual" | "rectal" | "other";
 
 export type ClinicSettings = {
@@ -253,6 +418,7 @@ export type ClinicSettings = {
     billing?: boolean;
     dispensary?: boolean;
     attendance?: boolean;
+    loop?: boolean;
   };
 };
 

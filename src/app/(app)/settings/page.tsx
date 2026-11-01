@@ -18,6 +18,7 @@ const MODULE_LABELS: Record<AppModule, string> = {
   billing: "Billing",
   dispensary: "Dispensary",
   attendance: "Attendance",
+  loop: "Care Loop",
 };
 
 export default async function SettingsPage() {

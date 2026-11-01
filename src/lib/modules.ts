@@ -8,6 +8,7 @@ const DEFAULT_MODULE_FLAGS: Record<AppModule, boolean> = {
   billing: false,
   dispensary: false,
   attendance: false,
+  loop: true,
 };
 
 export const IMPLEMENTED_MODULES: Record<AppModule, boolean> = {
@@ -16,6 +17,7 @@ export const IMPLEMENTED_MODULES: Record<AppModule, boolean> = {
   billing: false,
   dispensary: false,
   attendance: false,
+  loop: true,
 };
 
 export function isModuleEnabled(

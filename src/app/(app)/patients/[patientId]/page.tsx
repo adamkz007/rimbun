@@ -3,13 +3,17 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, ArrowLeft, ClipboardPen } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ClipboardPen, Plus, Repeat2 } from "lucide-react";
 import Link from "next/link";
 import { format, differenceInYears } from "date-fns";
 import { requirePageAccess } from "@/lib/auth";
 import type { Tables } from "@/types/database";
 import { PatientProfileEditor } from "@/components/patients/patient-profile-editor";
 import { parseMedicalHistory } from "@/lib/patients";
+import { UrgencyBadge } from "@/components/care-loop/case-badges";
+import { getTest, type Urgency } from "@/lib/care-loop/catalogue";
+import { CASE_STATE_LABELS, NEXT_ACTION_LABELS, type CaseState } from "@/lib/care-loop/workflow";
+import { isModuleEnabled } from "@/lib/modules";
 
 type PatientEncounter = Pick<Tables<"encounters">, "id" | "status" | "created_at"> & {
   staff: Array<Pick<Tables<"staff">, "full_name">> | null;
@@ -21,9 +25,10 @@ export default async function PatientProfilePage({
   params: Promise<{ patientId: string }>;
 }) {
   const { patientId } = await params;
-  await requirePageAccess({
+  const staff = await requirePageAccess({
     roles: ["admin", "doctor", "nurse", "receptionist"],
   });
+  const loopEnabled = isModuleEnabled(staff.clinics?.settings, "loop");
   const supabase = await getSupabaseServerClient();
 
   const { data: patient } = await supabase
@@ -35,7 +40,7 @@ export default async function PatientProfilePage({
   if (!patient) notFound();
 
   const medicalHistory = parseMedicalHistory(patient.medical_history);
-  const [{ data: encounters }, { data: mergeCandidates }, mergedIntoResult] = await Promise.all([
+  const [{ data: encounters }, { data: mergeCandidates }, mergedIntoResult, { data: followUps }] = await Promise.all([
     supabase
       .from("encounters")
       .select("id, status, created_at, staff:doctor_id(full_name)")
@@ -55,6 +60,14 @@ export default async function PatientProfilePage({
           .eq("id", patient.merged_into_patient_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    loopEnabled
+      ? supabase
+          .from("result_cases")
+          .select("id, state, urgency, test_code, opened_at")
+          .eq("patient_id", patientId)
+          .order("opened_at", { ascending: false })
+          .limit(10)
+      : Promise.resolve({ data: [] }),
   ]);
   const mergedIntoPatient = mergedIntoResult.data;
 
@@ -98,6 +111,50 @@ export default async function PatientProfilePage({
       ) : null}
 
       <PatientProfileEditor patient={patient} mergeCandidates={mergeCandidates ?? []} />
+
+      {loopEnabled ? (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Repeat2 className="h-4 w-4" />
+              Result follow-ups
+            </CardTitle>
+            <Link href={`/cases/new?patient=${patient.id}`}>
+              <Button variant="outline" size="sm">
+                <Plus className="mr-1 h-4 w-4" />
+                Log result
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {!followUps?.length ? (
+              <p className="py-2 text-sm text-muted-foreground">No result follow-ups.</p>
+            ) : (
+              <div className="space-y-2">
+                {(followUps as Array<{ id: string; state: CaseState; urgency: Urgency; test_code: string; opened_at: string }>).map((followUp) => (
+                  <Link key={followUp.id} href={`/cases/${followUp.id}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 transition-colors hover:bg-muted/50">
+                      <div>
+                        <p className="text-sm font-medium">{getTest(followUp.test_code)?.label ?? followUp.test_code}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Opened {format(new Date(followUp.opened_at), "dd MMM yyyy")} ·{" "}
+                          {followUp.state === "closed" ? "Closed" : NEXT_ACTION_LABELS[followUp.state]}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <UrgencyBadge urgency={followUp.urgency} />
+                        <Badge variant={followUp.state === "closed" ? "secondary" : "outline"}>
+                          {CASE_STATE_LABELS[followUp.state]}
+                        </Badge>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-1">
