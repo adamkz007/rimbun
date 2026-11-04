@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { RimbunMark } from "@/components/branding/rimbun-logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -46,9 +47,12 @@ export function WaitingRoomDisplay({ clinicName, entries }: WaitingRoomDisplayPr
   return (
     <div className="mx-auto flex min-h-[calc(100vh-7rem)] max-w-5xl flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{clinicName}</h1>
-          <p className="text-muted-foreground">Waiting room display</p>
+        <div className="flex items-center gap-4">
+          <RimbunMark className="size-12" />
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{clinicName}</h1>
+            <p className="text-muted-foreground">Waiting room display</p>
+          </div>
         </div>
         <Link href="/queue">
           <Button variant="outline">

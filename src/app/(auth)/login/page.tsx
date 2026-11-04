@@ -27,11 +27,11 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mb-2 flex justify-center">
-            <span className="inline-flex size-12 items-center justify-center rounded-full bg-[#0f5a53]/8 text-[#0f5a53]">
-              <RimbunMark className="size-8" />
-            </span>
+            <RimbunMark className="size-12" />
           </div>
-          <CardTitle className="text-2xl font-bold">Rimbun</CardTitle>
+          <CardTitle className="font-brand text-3xl font-extrabold tracking-[-0.035em] text-[#12382A]">
+            rimbun
+          </CardTitle>
           <p className="text-sm text-muted-foreground">Clinic OS</p>
         </CardHeader>
         <CardContent>
