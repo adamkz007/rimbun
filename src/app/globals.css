@@ -129,3 +129,18 @@
     @apply font-sans;
   }
 }
+/* Hallmark · macrostructure: Split Hero + ruled sections · tone: calm clinical · anchor hue: leaf green 158
+ * Landing-page tokens from the final leaf-cross brand ("Rimbun Logo Directions").
+ * Exposed as Tailwind utilities: bg-leaf-ink, text-leaf-muted, border-leaf-rule, …
+ */
+@theme {
+  --color-leaf-ink: oklch(30.9% 0.05 166);
+  --color-leaf: oklch(53% 0.1 158);
+  --color-leaf-sage: oklch(79.8% 0.072 152);
+  --color-leaf-paper: oklch(97.8% 0.004 122);
+  --color-leaf-mist: oklch(95.4% 0.007 132);
+  --color-leaf-text: oklch(21.9% 0.025 163);
+  --color-leaf-muted: oklch(43.8% 0.029 158);
+  --color-leaf-rule: oklch(90.9% 0.011 150);
+  --color-leaf-on-ink: oklch(89.1% 0.024 155);
+}
