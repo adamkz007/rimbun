@@ -142,7 +142,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Good {getGreeting()}, {staff?.full_name?.split(" ")[0]}</h1>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {activeEncounterCardEnabled && (
           <Link href="/clerking">
             <Card className="hover:border-primary/50 transition-colors cursor-pointer">
@@ -204,7 +204,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       {clerkingEnabled ? (
         <Card>
           <CardHeader className="gap-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex items-center justify-between gap-3">
               <div className="space-y-1">
                 <CardTitle>Past Encounters</CardTitle>
               </div>
@@ -214,8 +214,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <form className="flex flex-wrap items-end gap-3">
-              <div className="min-w-64 flex-1 space-y-1">
+            <form className="grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+              <div className="space-y-1 sm:col-span-2 xl:col-span-1">
                 <label htmlFor="dashboard-past-encounters-query" className="text-xs text-muted-foreground">
                   Patient name
                 </label>
@@ -231,7 +231,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 </div>
               </div>
 
-              <div className="min-w-44 space-y-1">
+              <div className="space-y-1 sm:col-span-2 xl:col-span-1">
                 <label htmlFor="dashboard-past-encounters-doctor" className="text-xs text-muted-foreground">
                   Doctor
                 </label>
@@ -250,7 +250,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 </select>
               </div>
 
-              <div className="min-w-36 space-y-1">
+              <div className="min-w-0 space-y-1">
                 <label htmlFor="dashboard-past-encounters-from" className="text-xs text-muted-foreground">
                   From
                 </label>
@@ -262,7 +262,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 />
               </div>
 
-              <div className="min-w-36 space-y-1">
+              <div className="min-w-0 space-y-1">
                 <label htmlFor="dashboard-past-encounters-to" className="text-xs text-muted-foreground">
                   To
                 </label>
@@ -274,7 +274,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 />
               </div>
 
-              <div className="flex items-end gap-2 self-end">
+              <div className="flex items-end gap-2 sm:col-span-2 sm:justify-end xl:col-span-1">
                 <Button type="submit" variant="outline">
                   <Filter className="mr-2 h-4 w-4" />
                   Apply
@@ -332,7 +332,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                               <span>Logged {format(new Date(encounter.created_at), "dd MMM yyyy, h:mm a")}</span>
                             </div>
                           </div>
-                          <span className="shrink-0 text-xs font-medium text-primary">Open encounter</span>
+                          <span className="hidden shrink-0 text-xs font-medium text-primary sm:inline">Open encounter</span>
                         </CardContent>
                       </Card>
                     </Link>

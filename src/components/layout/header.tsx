@@ -20,9 +20,9 @@ export function Header({ staffName, role }: { staffName: string; role: string })
     .slice(0, 2);
 
   return (
-    <header className="flex h-14 items-center justify-between border-b px-6 pl-14 md:pl-6">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b px-4 pl-16 sm:px-6">
       <div className="flex items-center gap-3">
-        <RimbunMark className="size-6 md:hidden" />
+        <RimbunMark className="size-6 sm:hidden" />
         <button
           onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
           className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted transition-colors"
@@ -35,12 +35,12 @@ export function Header({ staffName, role }: { staffName: string; role: string })
         </button>
       </div>
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-2 rounded-md px-3 py-2 hover:bg-muted transition-colors">
+        <DropdownMenuTrigger className="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 hover:bg-muted transition-colors sm:px-3">
           <Avatar className="h-7 w-7">
             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
-          <span className="text-sm">{staffName}</span>
-          <span className="text-xs text-muted-foreground capitalize">({role})</span>
+          <span className="hidden max-w-40 truncate text-sm sm:inline">{staffName}</span>
+          <span className="hidden text-xs text-muted-foreground capitalize md:inline">({role})</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => logout()}>

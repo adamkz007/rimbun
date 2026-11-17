@@ -8,14 +8,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const staff = await requireAuthenticatedStaff();
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-dvh overflow-hidden">
       <Sidebar
         role={staff.role}
         clinic={staff.clinics}
       />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Header staffName={staff.full_name} role={staff.role} />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-4 sm:p-6">{children}</main>
       </div>
       <CommandPalette role={staff.role} clinicSettings={staff.clinics?.settings} />
       <Toaster />

@@ -140,7 +140,7 @@ export default async function CasesPage({ searchParams }: CasesPageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Care Loop</h1>
           <p className="text-sm text-muted-foreground">
@@ -175,13 +175,13 @@ export default async function CasesPage({ searchParams }: CasesPageProps) {
         />
       </div>
 
-      <nav className="flex flex-wrap gap-1 border-b" aria-label="Worklists">
+      <nav className="-mx-4 flex gap-1 overflow-x-auto border-b px-4 sm:mx-0 sm:px-0 [scrollbar-width:none]" aria-label="Worklists">
         {WORKLISTS.map((key) => (
           <Link
             key={key}
             href={`/cases?list=${key}`}
             className={cn(
-              "-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium",
+              "-mb-px flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium",
               key === list
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -216,7 +216,7 @@ export default async function CasesPage({ searchParams }: CasesPageProps) {
             return (
               <Link key={row.id} href={`/cases/${row.id}`}>
                 <Card className="transition-colors hover:border-primary/50">
-                  <CardContent className="grid gap-2 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center">
+                  <CardContent className="grid gap-2 px-4 py-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center">
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate text-sm font-medium">{patient?.full_name ?? "Unknown patient"}</p>
