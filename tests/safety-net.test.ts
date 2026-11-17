@@ -477,3 +477,29 @@ test("the answer summary comes from the question bank, most concerning first", (
   );
   assert.equal(summarizeAnswers(p, { opener: "same", fever_trend: "not_yet" }, 2), "no change · fever not settling");
 });
+
+// ---- Metrics ----
+
+test("follow-up metrics come from the records: answer rate, route mix, red-to-decision time, confidence", async () => {
+  const { computeFollowupMetrics } = await import("../src/lib/safety-net/metrics.ts");
+  const at = (minutes: number) => new Date(NOW.getTime() + minutes * 60_000).toISOString();
+  const metrics = computeFollowupMetrics(
+    [
+      { id: "a", state: "closed", route: "green", sent_at: at(0), responded_at: at(5), escalated_at: null, closure_reason: "improved", answers: { next_steps: "yes" } },
+      { id: "b", state: "escalated", route: "red", sent_at: at(0), responded_at: at(2), escalated_at: at(10), closure_reason: null, answers: { next_steps: "not_sure" } },
+      { id: "c", state: "needs_call", route: null, sent_at: at(0), responded_at: null, escalated_at: null, closure_reason: null, answers: {} },
+      { id: "d", state: "scheduled", route: null, sent_at: null, responded_at: null, escalated_at: null, closure_reason: null, answers: {} },
+    ],
+    [
+      { followup_id: "b", created_at: at(5) },
+      { followup_id: "b", created_at: at(22) },
+      { followup_id: "b", created_at: at(40) },
+    ]
+  );
+  assert.equal(metrics.sent, 3);
+  assert.equal(metrics.answeredPercent, 67);
+  assert.deepEqual(metrics.routeMix, { green: 1, amber: 0, red: 1 });
+  assert.equal(metrics.medianMinutesRedToDecision, 12, "first staff action after escalation");
+  assert.deepEqual(metrics.closures, { improved: 1 });
+  assert.equal(metrics.confidencePercent, 50);
+});

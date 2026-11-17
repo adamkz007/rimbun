@@ -6,6 +6,8 @@ import { requirePageAccess } from "@/lib/auth";
 import { getTest, TEST_CATEGORY_LABELS, type TestCategory } from "@/lib/care-loop/catalogue";
 import { computeLoopMetrics, formatDuration, type MetricsCase, type MetricsReferral } from "@/lib/care-loop/metrics";
 import { CLOSURE_REASON_LABELS, type ClosureReason } from "@/lib/care-loop/workflow";
+import { computeFollowupMetrics, type MetricsFollowup } from "@/lib/safety-net/metrics";
+import { CLOSURE_REASON_LABELS as FOLLOWUP_CLOSURE_LABELS, ESCALATION_DUE_MINUTES } from "@/lib/safety-net/workflow";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 type Row = MetricsCase & { test_code: string; result: { reported_at: string } | Array<{ reported_at: string }> | null };
@@ -14,7 +16,7 @@ export default async function CareLoopMetricsPage() {
   const staff = await requirePageAccess({ module: "loop" });
   const supabase = await getSupabaseServerClient();
 
-  const [casesRes, referralsRes] = await Promise.all([
+  const [casesRes, referralsRes, followupsRes, actionsRes] = await Promise.all([
     supabase
       .from("result_cases")
       .select(
@@ -23,7 +25,27 @@ export default async function CareLoopMetricsPage() {
       .eq("clinic_id", staff.clinic_id)
       .limit(5000),
     supabase.from("referrals").select("status").eq("clinic_id", staff.clinic_id),
+    supabase
+      .from("safety_net_followups")
+      .select("id, state, route, sent_at, responded_at, escalated_at, closure_reason, answers")
+      .eq("clinic_id", staff.clinic_id)
+      .limit(5000),
+    supabase
+      .from("safety_net_events")
+      .select("followup_id, created_at")
+      .eq("clinic_id", staff.clinic_id)
+      .in("event_type", ["decision", "closed", "call_logged"])
+      .not("actor_staff_id", "is", null)
+      .limit(20000),
   ]);
+  if (followupsRes.error) throw new Error(followupsRes.error.message);
+  if (actionsRes.error) throw new Error(actionsRes.error.message);
+  const followupMetrics = computeFollowupMetrics(
+    (followupsRes.data ?? []) as MetricsFollowup[],
+    (actionsRes.data ?? []) as Array<{ followup_id: string; created_at: string }>
+  );
+  const closureMax = Math.max(1, ...Object.values(followupMetrics.closures).map((count) => count ?? 0));
+  const routeTotal = followupMetrics.routeMix.red + followupMetrics.routeMix.amber + followupMetrics.routeMix.green;
   if (casesRes.error) throw new Error(casesRes.error.message);
   if (referralsRes.error) throw new Error(referralsRes.error.message);
 
@@ -146,6 +168,58 @@ export default async function CareLoopMetricsPage() {
                   </span>
                 </div>
               ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">Safety-net follow-ups</h2>
+          <p className="text-sm text-muted-foreground">
+            {followupMetrics.sent} WhatsApp check-in{followupMetrics.sent === 1 ? "" : "s"} sent after visits with an
+            unconfirmed cause. No comparison with an earlier period is shown until there is real data for one.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric label="Check-ins answered on WhatsApp" value={percent(followupMetrics.answeredPercent)} detail={`${followupMetrics.sent} sent`} />
+          <Metric
+            label="Red route to a decision"
+            value={followupMetrics.medianMinutesRedToDecision === null ? "–" : `${Math.round(followupMetrics.medianMinutesRedToDecision)} min`}
+            detail={`Target ${ESCALATION_DUE_MINUTES} min · ${followupMetrics.redDecisions} red`}
+          />
+          <Metric
+            label="Knew what to do next"
+            value={percent(followupMetrics.confidencePercent)}
+            detail={`${followupMetrics.confidenceAnswers} answered`}
+          />
+          <Metric
+            label="Route mix"
+            value={routeTotal === 0 ? "–" : `${followupMetrics.routeMix.red} / ${followupMetrics.routeMix.amber} / ${followupMetrics.routeMix.green}`}
+            detail="High / medium / low risk"
+          />
+        </div>
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="text-sm">Follow-ups closed, by reason</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {Object.keys(followupMetrics.closures).length === 0 ? (
+              <p className="text-sm text-muted-foreground">None closed yet.</p>
+            ) : (
+              Object.entries(followupMetrics.closures)
+                .sort(([, left], [, right]) => (right ?? 0) - (left ?? 0))
+                .map(([reason, count]) => (
+                  <div key={reason} className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span>{FOLLOWUP_CLOSURE_LABELS[reason as keyof typeof FOLLOWUP_CLOSURE_LABELS]}</span>
+                      <span className="font-medium">{count}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted">
+                      <div className="h-2 rounded-full bg-primary" style={{ width: `${((count ?? 0) / closureMax) * 100}%` }} />
+                    </div>
+                  </div>
+                ))
             )}
           </CardContent>
         </Card>
