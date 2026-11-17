@@ -30,6 +30,7 @@ import {
 } from "@/lib/safety-net/suggest";
 import { isSimulatorEnabled } from "@/lib/safety-net/transport";
 import {
+  applyCallLog,
   canScheduleFollowups,
   canWorkFollowups,
   checkClosure,
@@ -251,18 +252,13 @@ export async function logFollowupCall(input: {
     const followup = await loadFollowup(db, input.followupId, staff.clinic_id);
     if (followup.state === "closed") throw new Error("This follow-up is closed.");
 
-    if (input.outcome !== "reached") {
-      const { error } = await db
-        .from("safety_net_followups")
-        .update({ call_attempts: followup.call_attempts + 1, updated_at: new Date().toISOString() })
-        .eq("id", followup.id);
-      if (error) throw new Error(error.message);
-    }
-    await recordFollowupEvent(db, followup, actor, {
-      type: "call_logged",
-      note: input.note,
-      data: { outcome: input.outcome },
-    });
+    const saved = await persistOutcome(
+      db,
+      followup,
+      applyCallLog(followup, input.outcome, input.note?.trim() || null),
+      actor
+    );
+    if (!saved) throw new Error("This follow-up just changed. Refresh and try again.");
     refresh(followup.id);
   });
 }

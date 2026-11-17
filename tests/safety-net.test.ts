@@ -9,6 +9,7 @@ import {
   type Protocol,
 } from "../src/lib/safety-net/protocols.ts";
 import {
+  applyCallLog,
   applyReply,
   applyTimers,
   checkClosure,
@@ -244,6 +245,22 @@ test("silence becomes a nurse call: no reply, or an unfinished set", () => {
   assert.equal(partial?.patch.call_reason, "incomplete");
 
   assert.equal(applyTimers(snapshot("adult_fever", { state: "needs_call", current_step_due_at: past }), p, ctx, NOW), null);
+});
+
+// ---- Calls ----
+
+test("three unanswered calls hand the decision to a doctor", () => {
+  assert.deepEqual(applyCallLog({ state: "needs_call", call_attempts: 0 }, "reached", "Spoke to her", NOW).patch, {});
+  assert.equal(applyCallLog({ state: "needs_call", call_attempts: 0 }, "no_answer", null, NOW).patch.call_attempts, 1);
+  assert.equal(applyCallLog({ state: "needs_call", call_attempts: 1 }, "no_answer", null, NOW).patch.state, undefined);
+  const third = applyCallLog({ state: "needs_call", call_attempts: 2 }, "wrong_number", null, NOW);
+  assert.equal(third.patch.state, "escalated");
+  assert.ok(third.events.some((event) => event.type === "unreachable"));
+  assert.equal(
+    applyCallLog({ state: "escalated", call_attempts: 5 }, "no_answer", null, NOW).patch.state,
+    undefined,
+    "already with a doctor"
+  );
 });
 
 // ---- Closure ----

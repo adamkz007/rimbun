@@ -117,6 +117,7 @@ export type FollowupPatch = Partial<{
   responded_at: string;
   completed_at: string;
   escalated_at: string;
+  call_attempts: number;
   call_reason: CallReason | null;
   closed_at: string | null;
   closed_by: string | null;
@@ -336,6 +337,35 @@ export function applyTimers(
 }
 
 // ---- Staff decisions ----
+
+/**
+ * Logging a call. After UNREACHABLE_AFTER_CALLS unanswered calls a nurse is
+ * waiting on, a doctor has to decide what happens next.
+ */
+export function applyCallLog(
+  snapshot: Pick<FollowupSnapshot, "state"> & { call_attempts: number },
+  outcome: "reached" | "no_answer" | "wrong_number",
+  note: string | null,
+  now: Date = new Date()
+): Outcome {
+  const logged: LifecycleEvent = { type: "call_logged", note, data: { outcome } };
+  if (outcome === "reached") return { patch: {}, outbound: [], events: [logged] };
+
+  const attempts = snapshot.call_attempts + 1;
+  if (snapshot.state === "needs_call" && attempts >= UNREACHABLE_AFTER_CALLS) {
+    return {
+      patch: {
+        call_attempts: attempts,
+        state: "escalated",
+        escalated_at: at(now),
+        current_step_due_at: at(now, ESCALATION_DUE_MINUTES * MINUTE),
+      },
+      outbound: [],
+      events: [logged, { type: "unreachable", data: { attempts } }],
+    };
+  }
+  return { patch: { call_attempts: attempts }, outbound: [], events: [logged] };
+}
 
 export function canScheduleFollowups(role: StaffRole) {
   return role === "doctor";
