@@ -16,7 +16,7 @@ export type MetricsFollowup = {
   answers: Record<string, string>;
 };
 
-/** Staff actions that count as a doctor (or staff) acting on a follow-up. */
+/** A doctor's decision or closure on a follow-up (the caller filters to doctors). */
 export type MetricsAction = { followup_id: string; created_at: string };
 
 const MINUTE = 60 * 1000;
@@ -40,7 +40,8 @@ export function computeFollowupMetrics(followups: MetricsFollowup[], actions: Me
   }
   const redToDecision: number[] = [];
   for (const item of followups) {
-    if (!item.escalated_at) continue;
+    // Red answers only: escalations from unanswered calls or staff aren't a red route.
+    if (!item.escalated_at || item.route !== "red") continue;
     const start = new Date(item.escalated_at).getTime();
     const next = (actionsByFollowup.get(item.id) ?? []).filter((time) => time >= start).sort((a, b) => a - b)[0];
     if (next !== undefined) redToDecision.push((next - start) / MINUTE);

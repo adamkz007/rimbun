@@ -32,9 +32,9 @@ export default async function CareLoopMetricsPage() {
       .limit(5000),
     supabase
       .from("safety_net_events")
-      .select("followup_id, created_at")
+      .select("followup_id, created_at, actor:actor_staff_id(role)")
       .eq("clinic_id", staff.clinic_id)
-      .in("event_type", ["decision", "closed", "call_logged"])
+      .in("event_type", ["decision", "closed"])
       .not("actor_staff_id", "is", null)
       .limit(20000),
   ]);
@@ -42,7 +42,9 @@ export default async function CareLoopMetricsPage() {
   if (actionsRes.error) throw new Error(actionsRes.error.message);
   const followupMetrics = computeFollowupMetrics(
     (followupsRes.data ?? []) as MetricsFollowup[],
-    (actionsRes.data ?? []) as Array<{ followup_id: string; created_at: string }>
+    ((actionsRes.data ?? []) as Array<{ followup_id: string; created_at: string; actor: { role: string } | Array<{ role: string }> | null }>)
+      .filter((action) => (Array.isArray(action.actor) ? action.actor[0]?.role : action.actor?.role) === "doctor")
+      .map(({ followup_id, created_at }) => ({ followup_id, created_at }))
   );
   const closureMax = Math.max(1, ...Object.values(followupMetrics.closures).map((count) => count ?? 0));
   const routeTotal = followupMetrics.routeMix.red + followupMetrics.routeMix.amber + followupMetrics.routeMix.green;
@@ -184,7 +186,7 @@ export default async function CareLoopMetricsPage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label="Check-ins answered on WhatsApp" value={percent(followupMetrics.answeredPercent)} detail={`${followupMetrics.sent} sent`} />
           <Metric
-            label="Red route to a decision"
+            label="Red answer to a doctor's decision"
             value={followupMetrics.medianMinutesRedToDecision === null ? "–" : `${Math.round(followupMetrics.medianMinutesRedToDecision)} min`}
             detail={`Target ${ESCALATION_DUE_MINUTES} min · ${followupMetrics.redDecisions} red`}
           />

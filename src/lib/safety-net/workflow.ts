@@ -228,6 +228,7 @@ export type FollowupSnapshot = {
   current_step_due_at: string | null;
   closed_at: string | null;
   route: Route | null;
+  call_reason: CallReason | null;
   differential: DifferentialEntry[];
   /** The one question the patient can answer now (null when none is live). */
   pending_question_id: string | null;
@@ -325,6 +326,28 @@ function withRouteChange(snapshot: FollowupSnapshot, outcome: Outcome, now: Date
   return outcome;
 }
 
+/**
+ * A patient's late answers are recorded and can raise the route, but never
+ * take a follow-up away from a person who has to act: an escalated follow-up
+ * stays with the doctor (unless it becomes more urgent, which it already is),
+ * and a nurse call for a typed message stays until someone reads it.
+ */
+function keepWithPerson(snapshot: FollowupSnapshot, outcome: Outcome): Outcome {
+  const next = outcome.patch.state;
+  if (!next) return outcome;
+  const holdForDoctor = snapshot.state === "escalated" && next !== "escalated";
+  const holdForMessage =
+    snapshot.state === "needs_call" &&
+    snapshot.call_reason === "patient_message" &&
+    next !== "escalated";
+  if (!holdForDoctor && !holdForMessage) return outcome;
+  const { state: _state, call_reason: _reason, current_step_due_at: _due, ...rest } = outcome.patch;
+  void _state;
+  void _reason;
+  void _due;
+  return { ...outcome, patch: rest };
+}
+
 /** Applies one patient reply. Returns what to persist and send, or why it was ignored. */
 export function applyReply(
   snapshot: FollowupSnapshot,
@@ -397,6 +420,26 @@ export function applyReply(
       now
     );
   }
+
+  return keepWithPerson(snapshot, answerOutcome(snapshot, protocol, reply, ctx, now, { answers, differential, base, answered, route }));
+}
+
+function answerOutcome(
+  snapshot: FollowupSnapshot,
+  protocol: Protocol,
+  reply: { questionId: string; value: string },
+  ctx: MessageContext,
+  now: Date,
+  given: {
+    answers: Record<string, string>;
+    differential: DifferentialEntry[];
+    base: FollowupPatch;
+    answered: LifecycleEvent;
+    route: Route;
+  }
+): Outcome {
+  const lang = snapshot.language;
+  const { answers, differential, base, answered, route } = given;
 
   if (route === "red") {
     return withRouteChange(

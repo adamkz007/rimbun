@@ -59,6 +59,7 @@ function snapshot(code: string, overrides: Partial<FollowupSnapshot> = {}): Foll
     current_step_due_at: new Date(NOW.getTime() + 6 * 3600_000).toISOString(),
     closed_at: null,
     route: null,
+    call_reason: null,
     differential: [],
     pending_question_id: OPENER_ID,
     ...overrides,
@@ -379,6 +380,32 @@ test("route changes are timestamped so the list can highlight the row", () => {
   assert.equal(outcome.patch.route_changed_at, NOW.toISOString());
 });
 
+test("late answers never pull a follow-up away from the doctor or from an unread message", () => {
+  const p = protocol("adult_fever");
+  // Escalated after three unanswered calls, with the opener still live.
+  const escalated = snapshot("adult_fever", { state: "escalated", route: null });
+  const tap = asOutcome(applyReply(escalated, p, { kind: "button", questionId: OPENER_ID, value: "better" }, ctx, NOW));
+  assert.equal(tap.patch.state, undefined, "stays escalated");
+  assert.equal(tap.patch.answers?.[OPENER_ID], "better", "the answer is still recorded");
+  assert.equal(tap.patch.pending_question_id, "fluids", "and the questions continue");
+
+  // A typed message made a nurse call; the next tap must not clear it.
+  const messaged = snapshot("adult_fever", {
+    state: "needs_call",
+    call_reason: "patient_message",
+    answers: { [OPENER_ID]: "same" },
+    route: "amber",
+    pending_question_id: "fluids",
+  });
+  const next = asOutcome(applyReply(messaged, p, { kind: "button", questionId: "fluids", value: "yes" }, ctx, NOW));
+  assert.equal(next.patch.state, undefined);
+  assert.equal(next.patch.call_reason, undefined);
+
+  // But a red answer still escalates.
+  const red = asOutcome(applyReply(messaged, p, { kind: "button", questionId: "fluids", value: "cannot" }, ctx, NOW));
+  assert.equal(red.patch.state, "escalated");
+});
+
 // ---- Timers ----
 
 test("the check-in is sent when it falls due, not before", () => {
@@ -487,6 +514,7 @@ test("follow-up metrics come from the records: answer rate, route mix, red-to-de
     [
       { id: "a", state: "closed", route: "green", sent_at: at(0), responded_at: at(5), escalated_at: null, closure_reason: "improved", answers: { next_steps: "yes" } },
       { id: "b", state: "escalated", route: "red", sent_at: at(0), responded_at: at(2), escalated_at: at(10), closure_reason: null, answers: { next_steps: "not_sure" } },
+      { id: "e", state: "escalated", route: null, sent_at: at(0), responded_at: null, escalated_at: at(10), closure_reason: null, answers: {} },
       { id: "c", state: "needs_call", route: null, sent_at: at(0), responded_at: null, escalated_at: null, closure_reason: null, answers: {} },
       { id: "d", state: "scheduled", route: null, sent_at: null, responded_at: null, escalated_at: null, closure_reason: null, answers: {} },
     ],
@@ -494,10 +522,12 @@ test("follow-up metrics come from the records: answer rate, route mix, red-to-de
       { followup_id: "b", created_at: at(5) },
       { followup_id: "b", created_at: at(22) },
       { followup_id: "b", created_at: at(40) },
+      { followup_id: "e", created_at: at(11) },
     ]
   );
-  assert.equal(metrics.sent, 3);
-  assert.equal(metrics.answeredPercent, 67);
+  assert.equal(metrics.sent, 4);
+  assert.equal(metrics.answeredPercent, 50);
+  assert.equal(metrics.redDecisions, 1, "an escalation without a red answer isn't a red route");
   assert.deepEqual(metrics.routeMix, { green: 1, amber: 0, red: 1 });
   assert.equal(metrics.medianMinutesRedToDecision, 12, "first staff action after escalation");
   assert.deepEqual(metrics.closures, { improved: 1 });
