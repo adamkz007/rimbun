@@ -159,10 +159,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         .from("safety_net_followups")
         .select("state")
         .eq("clinic_id", staff.clinic_id)
-        .in("state", ["escalated", "needs_call"])
+        .in("state", ["escalated", "needs_call", "ready_to_close"])
     : { data: [] as Array<{ state: string }> };
   const redFlagFollowups = (followupAction ?? []).filter((row) => row.state === "escalated").length;
   const callFollowups = (followupAction ?? []).filter((row) => row.state === "needs_call").length;
+  const signOffFollowups = (followupAction ?? []).filter((row) => row.state === "ready_to_close").length;
 
   return (
     <div className="space-y-6">
@@ -184,7 +185,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         ) : null}
       </div>
 
-      {redFlagFollowups > 0 || callFollowups > 0 ? (
+      {redFlagFollowups > 0 || callFollowups > 0 || signOffFollowups > 0 ? (
         <Link
           href="/followups?list=action"
           className={
@@ -200,15 +201,22 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <span className="font-medium">
             {redFlagFollowups > 0
               ? `${redFlagFollowups} safety-net check-in${redFlagFollowups === 1 ? "" : "s"} reported red flags: a doctor needs to act now`
-              : "Safety-net check-ins need a call"}
+              : callFollowups > 0
+                ? "Safety-net check-ins need a call"
+                : "Safety-net check-ins are ready to close"}
           </span>
           {redFlagFollowups > 0 && callFollowups > 0 ? (
             <span>
               · {callFollowups} more need{callFollowups === 1 ? "s" : ""} a nurse call
             </span>
-          ) : redFlagFollowups === 0 ? (
+          ) : redFlagFollowups === 0 && callFollowups > 0 ? (
             <span>
               {callFollowups} patient{callFollowups === 1 ? "" : "s"} to call
+            </span>
+          ) : null}
+          {signOffFollowups > 0 && staff.role === "doctor" ? (
+            <span>
+              · {signOffFollowups} ready for your sign-off
             </span>
           ) : null}
         </Link>

@@ -543,22 +543,25 @@ export async function requestRimbunRead(followupId: string) {
     const answered = Object.keys(followup.answers ?? {}).filter((id) => id !== OPENER_ID);
     if (answered.length === 0) throw new Error("There are no answers to read yet.");
 
-    const { data: typed, error } = await db
+    const { data: inbound, error } = await db
       .from("safety_net_messages")
-      .select("body")
+      .select("kind, body, question_id")
       .eq("followup_id", followup.id)
       .eq("direction", "in")
-      .eq("kind", "text")
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
+    const typed = (inbound ?? []).filter((message) => message.kind === "text");
+    const order = (inbound ?? [])
+      .filter((message) => message.kind === "button_reply" && message.question_id)
+      .map((message) => message.question_id as string);
 
-    const rows = answerRows(protocol, followup.answers ?? {}, "en");
+    const rows = answerRows(protocol, followup.answers ?? {}, "en", order);
     const complete = Boolean(followup.completed_at);
     const read = await readFollowup({
       protocolLabel: protocol.label,
       route: routeOfAnswers(protocol, followup.answers ?? {}),
       doctorNote: followup.doctor_note,
-      causes: causeRows(protocol, followup.differential ?? [], followup.question_ids, followup.answers ?? {}, complete).map(
+      causes: causeRows(protocol, followup.differential ?? [], followup.question_ids, followup.answers ?? {}, complete, order).map(
         (row) => ({
           label: row.label,
           started: levelLabel(row.initial).toLowerCase(),
@@ -568,7 +571,7 @@ export async function requestRimbunRead(followupId: string) {
       ),
       answers: rows.map((row) => ({ question: row.asked, answer: row.answer, route: row.route ?? "unknown" })),
       skipped: complete ? skippedQuestions(protocol, followup.question_ids, followup.answers ?? {}) : [],
-      patientMessages: (typed ?? []).map((message) => message.body),
+      patientMessages: typed.map((message) => message.body),
     });
 
     const aiRead = {

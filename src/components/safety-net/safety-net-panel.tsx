@@ -170,8 +170,8 @@ export function SafetyNetPanel({
           <DialogHeader>
             <DialogTitle>Safety-net follow-up</DialogTitle>
             <DialogDescription>
-              The patient gets a WhatsApp check-in. Fixed rules route the answers: improving closes, a concern goes to a
-              nurse call, a red flag sends emergency advice and alerts a doctor.
+              The patient gets a WhatsApp check-in. Fixed rules route the answers: improving goes to a doctor to sign off,
+              a concern goes to a nurse call, a red flag sends emergency advice and alerts a doctor.
             </DialogDescription>
           </DialogHeader>
 

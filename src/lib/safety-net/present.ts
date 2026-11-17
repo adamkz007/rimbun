@@ -29,8 +29,26 @@ export type AnswerRow = {
   route: Route | null;
 };
 
-export function answerRows(protocol: Protocol, answers: Record<string, string>, language: PatientLanguage): AnswerRow[] {
-  return Object.entries(answers).map(([questionId, value]) => {
+/**
+ * Answers in the order the patient gave them. Stored answers are a JSON object
+ * whose key order the database doesn't keep, so the order comes from the
+ * conversation (the patient's button replies, oldest first).
+ */
+export function orderedAnswers(answers: Record<string, string>, order: string[] = []): Array<[string, string]> {
+  const rank = (id: string) => {
+    const index = order.indexOf(id);
+    return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+  };
+  return Object.entries(answers).sort(([left], [right]) => rank(left) - rank(right));
+}
+
+export function answerRows(
+  protocol: Protocol,
+  answers: Record<string, string>,
+  language: PatientLanguage,
+  order: string[] = []
+): AnswerRow[] {
+  return orderedAnswers(answers, order).map(([questionId, value]) => {
     if (questionId === OPENER_ID) {
       const known = (OPENER_VALUES as readonly string[]).includes(value);
       const label = known ? OPENER_LABELS[value as OpenerValue] : { en: value, ms: value };
@@ -71,9 +89,12 @@ export function causeRows(
   differential: DifferentialEntry[],
   pool: string[],
   answers: Record<string, string>,
-  complete: boolean
+  complete: boolean,
+  order: string[] = []
 ): CauseRow[] {
-  const answerOrder = Object.keys(answers).filter((id) => id !== OPENER_ID && id !== CONFIDENCE_ID);
+  const answerOrder = orderedAnswers(answers, order)
+    .map(([id]) => id)
+    .filter((id) => id !== OPENER_ID && id !== CONFIDENCE_ID);
   return differential.map((entry) => {
     const cause = protocol.causes.find((item) => item.id === entry.cause);
     const question = entry.questionId ? getQuestion(protocol, entry.questionId) : null;

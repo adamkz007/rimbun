@@ -117,15 +117,22 @@ export default async function FollowupPage({ params }: { params: Promise<{ id: s
   const simulatorUrl =
     isSimulatorEnabled() && followup.sim_token ? `${await getRequestOrigin()}/wa-sim/${followup.sim_token}` : null;
 
-  // Patient replies, as asked, with an English gloss for Malay answers.
-  const replies = protocol ? answerRows(protocol, answers, followup.language).filter((row) => row.questionId !== CONFIDENCE_ID) : [];
+  // Patient replies, as asked and in the order given, with an English gloss for Malay answers.
+  const answerOrder = messages
+    .filter((message) => message.direction === "in" && message.kind === "button_reply" && message.question_id)
+    .map((message) => message.question_id!);
+  const replies = protocol
+    ? answerRows(protocol, answers, followup.language, answerOrder).filter((row) => row.questionId !== CONFIDENCE_ID)
+    : [];
   const firstReply = messages.find((message) => message.direction === "in");
   const confidenceReply = [...messages].reverse().find((message) => message.direction === "in" && message.question_id === CONFIDENCE_ID);
   const confidence = answers[CONFIDENCE_ID];
 
   // How the answers narrowed it.
   const complete = Boolean(followup.completed_at);
-  const tree = protocol ? causeRows(protocol, followup.differential ?? [], followup.question_ids, answers, complete) : [];
+  const tree = protocol
+    ? causeRows(protocol, followup.differential ?? [], followup.question_ids, answers, complete, answerOrder)
+    : [];
   const encounter = encounterRes.data as
     | {
         encounter_date: string | null;
@@ -287,15 +294,20 @@ export default async function FollowupPage({ params }: { params: Promise<{ id: s
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-3 md:grid-cols-[180px_minmax(0,1fr)] md:items-center">
+                <div className="grid gap-3 2xl:grid-cols-[200px_minmax(0,1fr)] 2xl:items-center">
                   <div className="rounded-lg border bg-muted/30 px-3 py-2">
                     <p className="text-[11px] text-muted-foreground">Recorded at the visit</p>
                     <p className="text-lg font-semibold text-amber-800 dark:text-amber-300">
-                      {temperature !== null ? `${temperature} °C` : diagnosis ? diagnosis.icd10_code : "–"}
+                      {temperature !== null
+                        ? `Temperature ${temperature} °C`
+                        : diagnosis
+                          ? `${diagnosis.icd10_description} (${diagnosis.icd10_code})`
+                          : protocol?.label ?? "Visit"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {diagnosis ? `${diagnosis.icd10_description}` : protocol?.label}
-                      {visitDate ? ` · ${visitDate}` : ""}
+                      {temperature !== null && diagnosis ? `${diagnosis.icd10_description} · ` : ""}
+                      {visitDate ?? ""}
+                      {temperature === null && !diagnosis ? " · no vitals or diagnosis recorded" : ""}
                     </p>
                   </div>
                   {tree.length ? (
@@ -304,33 +316,37 @@ export default async function FollowupPage({ params }: { params: Promise<{ id: s
                         <li
                           key={row.cause}
                           className={cn(
-                            "grid gap-1 rounded-lg border px-3 py-2 text-xs sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.6fr)_auto] sm:items-center sm:gap-3",
+                            "rounded-lg border px-3 py-2",
                             row.level === "raised" && "border-amber-400 ring-1 ring-amber-300",
                             row.level === "ruled_out" && "opacity-60"
                           )}
                         >
-                          <span className="font-medium text-sm">{row.label}</span>
-                          <CauseLevelBadge level={row.level} />
-                          <span className="text-muted-foreground">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-sm font-medium">{row.label}</span>
+                            <span className="flex items-center gap-2">
+                              <CauseLevelBadge level={row.level} />
+                              <span className="text-xs text-muted-foreground">
+                                {row.tested
+                                  ? row.level === row.initial
+                                    ? "Unchanged"
+                                    : `was ${CAUSE_LEVEL_LABELS[row.initial].toLowerCase()}${row.tested.order ? ` · asked ${ORDINALS[row.tested.order] ?? row.tested.order}` : ""}`
+                                  : row.untested === "skipped"
+                                    ? "Skipped"
+                                    : "Not asked yet"}
+                              </span>
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
                             {row.tested ? (
                               <>
                                 {row.tested.question} <span className="font-medium text-foreground">{row.tested.answer}</span>
                               </>
                             ) : row.untested === "skipped" ? (
-                              "Not asked: wouldn't change the plan"
+                              "Not asked: it wouldn't change the plan."
                             ) : (
-                              "Not asked yet"
+                              "The question that tests this hasn't been reached."
                             )}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {row.tested
-                              ? row.level === row.initial
-                                ? "Unchanged"
-                                : `${CAUSE_LEVEL_LABELS[row.initial]} → ${CAUSE_LEVEL_LABELS[row.level]}${row.tested.order ? ` · asked ${ORDINALS[row.tested.order] ?? row.tested.order}` : ""}`
-                              : row.untested === "skipped"
-                                ? "Skipped"
-                                : ""}
-                          </span>
+                          </p>
                         </li>
                       ))}
                     </ul>
