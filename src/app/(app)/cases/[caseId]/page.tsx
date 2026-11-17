@@ -47,7 +47,7 @@ export default async function CasePage({ params }: { params: Promise<{ caseId: s
       .order("sent_at", { ascending: false }),
     supabase
       .from("referrals")
-      .select("id, receiving_facility, receiving_clinician, specialty, status, created_at, viewed_at, responded_at, reject_reason, appointment_on, outcome_note, attended_on, expires_at")
+      .select("id, receiving_facility, receiving_clinician, specialty, status, created_at, viewed_at, responded_at, reject_reason, appointment_on, appointment_time, appointment_place, outcome_note, attended_on, expires_at")
       .eq("case_id", caseId)
       .order("created_at", { ascending: false }),
     supabase
@@ -69,6 +69,14 @@ export default async function CasePage({ params }: { params: Promise<{ caseId: s
   ]);
 
   const followup = item.followup_id ? await loadFollowupJourney(supabase, item.followup_id) : null;
+  const referralIds = (referralsRes.data ?? []).map((referral) => referral.id);
+  const { data: referralNotes } = referralIds.length
+    ? await supabase
+        .from("referral_messages")
+        .select("id, referral_id, author_side, author_name, body, created_at")
+        .in("referral_id", referralIds)
+        .order("created_at", { ascending: true })
+    : { data: [] };
 
   const test = getTest(item.test_code);
   const resultValue = formatResultValue(item.test_code, { numeric: result.value_numeric, text: result.value_text });
@@ -167,7 +175,10 @@ export default async function CasePage({ params }: { params: Promise<{ caseId: s
       actor_name: first(event.actor as Relation<{ full_name: string }>)?.full_name ?? event.actor_label ?? "System",
     })),
     messages: messagesRes.data ?? [],
-    referrals: referralsRes.data ?? [],
+    referrals: (referralsRes.data ?? []).map((referral) => ({
+      ...referral,
+      messages: (referralNotes ?? []).filter((note) => note.referral_id === referral.id),
+    })),
     staff: staffRes.data ?? [],
     referralDraft,
     referralSpecialty: test?.referralSpecialty ?? "",

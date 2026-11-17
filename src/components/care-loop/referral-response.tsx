@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { respondToReferral } from "@/lib/actions/public-loop-actions";
+import { postReferralNote, respondToReferral } from "@/lib/actions/public-loop-actions";
 import { PublicCard } from "./public-shell";
 
 type Mode = "accept" | "decline" | "outcome";
@@ -24,6 +24,9 @@ export function ReferralResponseForm({
   const [name, setName] = useState(defaultName);
   const [date, setDate] = useState("");
   const [text, setText] = useState("");
+  const [time, setTime] = useState("");
+  const [place, setPlace] = useState("");
+  const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -42,6 +45,9 @@ export function ReferralResponseForm({
         responderName: name,
         status: mode === "accept" ? "accepted" : mode === "decline" ? "rejected" : "attended",
         appointmentOn: mode === "accept" ? date : null,
+        appointmentTime: mode === "accept" ? time : null,
+        appointmentPlace: mode === "accept" ? place : null,
+        note,
         attendedOn: mode === "outcome" ? date : null,
         rejectReason: mode === "decline" ? text : null,
         outcomeNote: mode === "outcome" ? text : null,
@@ -91,6 +97,18 @@ export function ReferralResponseForm({
             <input type="date" className={INPUT} value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
         ) : null}
+        {mode === "accept" && date ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-1 text-sm">
+              <span>Time (optional)</span>
+              <input type="time" className={INPUT} value={time} onChange={(event) => setTime(event.target.value)} />
+            </label>
+            <label className="block space-y-1 text-sm">
+              <span>Where (optional)</span>
+              <input className={INPUT} placeholder="e.g. ED triage" value={place} onChange={(event) => setPlace(event.target.value)} />
+            </label>
+          </div>
+        ) : null}
         {mode !== "accept" ? (
           <label className="block space-y-1 text-sm">
             <span>{mode === "decline" ? "Reason, and where the patient should go instead" : "Outcome and plan"}</span>
@@ -102,6 +120,16 @@ export function ReferralResponseForm({
             />
           </label>
         ) : null}
+        <label className="block space-y-1 text-sm">
+          <span>Note for the referring doctor (optional)</span>
+          <textarea
+            rows={2}
+            maxLength={1000}
+            className="w-full rounded-lg border border-[#d8cfc3] bg-white p-3 text-sm"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </label>
         {error ? (
           <p className="text-sm text-[#a11d1d]" role="alert">
             {error}
@@ -117,5 +145,54 @@ export function ReferralResponseForm({
         </button>
       </div>
     </PublicCard>
+  );
+}
+
+/** A note to the referring clinic, at any point while the link is valid. */
+export function ReferralNoteForm({ token, defaultName }: { token: string; defaultName: string }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [name, setName] = useState(defaultName);
+  const [body, setBody] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  function send() {
+    setError(null);
+    startTransition(async () => {
+      const result = await postReferralNote(token, { name, body });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setBody("");
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="mt-3 space-y-2 border-t border-[#e3dbd0] pt-3">
+      <input className={INPUT} placeholder="Your name" value={name} onChange={(event) => setName(event.target.value)} />
+      <textarea
+        rows={2}
+        maxLength={1000}
+        placeholder="Write to the referring doctor"
+        className="w-full rounded-lg border border-[#d8cfc3] bg-white p-3 text-sm"
+        value={body}
+        onChange={(event) => setBody(event.target.value)}
+      />
+      {error ? (
+        <p className="text-sm text-[#a11d1d]" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <button
+        type="button"
+        disabled={isPending || !body.trim()}
+        onClick={send}
+        className="h-10 w-full rounded-lg border border-[#083a39] text-sm font-medium text-[#083a39] disabled:opacity-50"
+      >
+        Send note
+      </button>
+    </div>
   );
 }

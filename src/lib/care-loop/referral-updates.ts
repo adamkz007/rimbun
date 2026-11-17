@@ -7,6 +7,8 @@ export type ReferralUpdate = {
   status: "accepted" | "rejected" | "attended";
   rejectReason?: string | null;
   appointmentOn?: string | null;
+  appointmentTime?: string | null;
+  appointmentPlace?: string | null;
   outcomeNote?: string | null;
   attendedOn?: string | null;
 };
@@ -43,7 +45,13 @@ export async function applyReferralUpdate(
     input.status === "rejected"
       ? { status: "rejected", reject_reason: input.rejectReason!.trim(), responded_at: now }
       : input.status === "accepted"
-        ? { status: appointmentOn ? "booked" : "accepted", appointment_on: appointmentOn, responded_at: now }
+        ? {
+            status: appointmentOn ? "booked" : "accepted",
+            appointment_on: appointmentOn,
+            appointment_time: appointmentOn ? input.appointmentTime?.trim().slice(0, 40) || null : null,
+            appointment_place: appointmentOn ? input.appointmentPlace?.trim().slice(0, 120) || null : null,
+            responded_at: now,
+          }
         : {
             status: "attended",
             outcome_note: input.outcomeNote!.trim(),

@@ -140,7 +140,7 @@ export async function respondToPatientLink(
 
 export async function respondToReferral(
   token: string,
-  input: ReferralUpdate & { responderName?: string | null }
+  input: ReferralUpdate & { responderName?: string | null; note?: string | null }
 ): Promise<ActionResult> {
   const lookup = await loadReferralLink(token);
   if (lookup.status !== "ok") return { ok: false, error: "This link is no longer valid." };
@@ -150,8 +150,47 @@ export async function respondToReferral(
 
   try {
     await applyReferralUpdate(getServiceDb(), lookup.data.referral, actor, input);
+    if (input.note?.trim()) await insertReceiverNote(lookup.data.referral, name, input.note);
     return { ok: true };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Unable to save your response." };
+  }
+}
+
+// ---- Clinician thread on a referral (receiver side) ----
+
+const NOTE_MAX = 1000;
+
+async function insertReceiverNote(
+  referral: { id: string; clinic_id: string; receiving_facility: string },
+  name: string,
+  body: string
+) {
+  const text = body.trim().slice(0, NOTE_MAX);
+  if (!text) return;
+  const { error } = await getServiceDb()
+    .from("referral_messages")
+    .insert({
+      clinic_id: referral.clinic_id,
+      referral_id: referral.id,
+      // Set here, never from the request: notes through the link are always the receiver's.
+      author_side: "receiver",
+      author_name: `${name.trim().slice(0, 80) || "Receiving clinician"} · ${referral.receiving_facility}`.slice(0, 160),
+      body: text,
+    });
+  if (error) throw new Error("Unable to save your note.");
+}
+
+export async function postReferralNote(token: string, input: { name?: string | null; body: string }): Promise<ActionResult> {
+  const lookup = await loadReferralLink(token);
+  if (lookup.status !== "ok") return { ok: false, error: "This link is no longer valid." };
+  if (!input.body?.trim()) return { ok: false, error: "Write a note first." };
+  if (input.body.trim().length > NOTE_MAX) return { ok: false, error: "Keep the note under 1,000 characters." };
+  try {
+    const name = input.name?.trim() || lookup.data.referral.receiving_clinician || "Receiving clinician";
+    await insertReceiverNote(lookup.data.referral, name, input.body);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Unable to save your note." };
   }
 }

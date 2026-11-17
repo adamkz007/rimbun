@@ -48,7 +48,7 @@ type CaseRow = {
   referral_rejected_at: string | null;
   contact_attempts: number;
   patients: Relation<{ id: string; full_name: string; mrn: string }>;
-  owner: Relation<{ full_name: string }>;
+  owner: Relation<{ full_name: string; is_active: boolean }>;
   result: Relation<{ value_numeric: number | null; value_text: string | null; reported_at: string }>;
 };
 
@@ -80,7 +80,7 @@ export default async function CasesPage({ searchParams }: CasesPageProps) {
     supabase
       .from("result_cases")
       .select(
-        "id, state, urgency, test_code, owner_staff_id, current_step_due_at, opened_at, notified_at, acknowledged_at, understanding_correct, care_started_at, closed_at, closure_reason, referral_rejected_at, contact_attempts, patients(id, full_name, mrn), owner:owner_staff_id(full_name), result:result_id(value_numeric, value_text, reported_at)"
+        "id, state, urgency, test_code, owner_staff_id, current_step_due_at, opened_at, notified_at, acknowledged_at, understanding_correct, care_started_at, closed_at, closure_reason, referral_rejected_at, contact_attempts, patients(id, full_name, mrn), owner:owner_staff_id(full_name, is_active), result:result_id(value_numeric, value_text, reported_at)"
       )
       .eq("clinic_id", staff.clinic_id)
       .or(`state.neq.closed,closed_at.gte.${closedSince}`)
@@ -259,6 +259,9 @@ export default async function CasesPage({ searchParams }: CasesPageProps) {
                         <p className="truncate text-sm font-medium">{patient?.full_name ?? "Unknown patient"}</p>
                         <UrgencyBadge urgency={row.urgency} />
                         {needsDecision ? <Badge variant="destructive">Unreachable: doctor to decide</Badge> : null}
+                        {row.state !== "closed" && owner && owner.is_active === false ? (
+                          <Badge variant="destructive">Owner inactive: reassign</Badge>
+                        ) : null}
                         {row.referral_rejected_at && row.state !== "closed" ? (
                           <Badge variant="destructive">Referral declined</Badge>
                         ) : null}

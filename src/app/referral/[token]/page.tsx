@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { formatClinicDate } from "@/lib/care-loop/format";
-import { ReferralResponseForm } from "@/components/care-loop/referral-response";
+import { ReferralNoteForm, ReferralResponseForm } from "@/components/care-loop/referral-response";
 import { LinkProblem, PublicCard, PublicShell } from "@/components/care-loop/public-shell";
 import { URGENCY_LABELS, type Urgency } from "@/lib/care-loop/catalogue";
+import { formatClinicDateTime } from "@/lib/care-loop/format";
 import { loadReferralLink, markReferralViewed } from "@/lib/care-loop/public-links";
+import { getServiceDb } from "@/lib/care-loop/server";
 
 export const metadata: Metadata = {
   title: "Referral",
@@ -26,6 +28,11 @@ export default async function ReferralPage({ params }: { params: Promise<{ token
 
   const { referral, item, patientName, clinic } = lookup.data;
   await markReferralViewed(lookup.data);
+  const { data: thread } = await getServiceDb()
+    .from("referral_messages")
+    .select("id, author_side, author_name, body, created_at")
+    .eq("referral_id", referral.id)
+    .order("created_at", { ascending: true });
 
   return (
     <PublicShell clinicName={clinic.name} subtitle="Referral for specialist review">
@@ -45,7 +52,35 @@ export default async function ReferralPage({ params }: { params: Promise<{ token
             </span>
           </div>
           <p className="mt-3 text-sm font-medium">{STATUS_TEXT[referral.status] ?? referral.status}</p>
-          {referral.appointment_on ? <p className="text-sm">Appointment {referral.appointment_on}</p> : null}
+          {referral.appointment_on ? (
+            <p className="text-sm">
+              Appointment {referral.appointment_on}
+              {referral.appointment_time ? `, ${referral.appointment_time}` : ""}
+              {referral.appointment_place ? ` · ${referral.appointment_place}` : ""}
+            </p>
+          ) : null}
+        </PublicCard>
+
+        <PublicCard>
+          <h2 className="text-base font-semibold">Clinician thread</h2>
+          {(thread ?? []).length === 0 ? (
+            <p className="mt-1 text-sm text-[#5f7a76]">No notes yet.</p>
+          ) : (
+            <ol className="mt-2 space-y-2">
+              {(thread ?? []).map((message) => (
+                <li
+                  key={message.id}
+                  className={`rounded-lg px-3 py-2 text-sm ${message.author_side === "receiver" ? "bg-[#fbf1dc]" : "bg-[#eef3f1]"}`}
+                >
+                  <p className="text-xs font-medium">
+                    {message.author_name} · {formatClinicDateTime(message.created_at)}
+                  </p>
+                  <p className="whitespace-pre-wrap">{message.body}</p>
+                </li>
+              ))}
+            </ol>
+          )}
+          <ReferralNoteForm token={token} defaultName={referral.receiving_clinician ?? ""} />
         </PublicCard>
 
         <PublicCard>

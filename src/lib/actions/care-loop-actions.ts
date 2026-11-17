@@ -665,3 +665,33 @@ export async function addCaseNote(caseId: string, note: string) {
     await recordCaseEvent(db, item, actor, { type: "note", note });
   });
 }
+
+// ---- Clinician thread on a referral (clinic side) ----
+
+export async function addReferralNote(referralId: string, body: string) {
+  return attempt(async () => {
+    const { staff, db } = await requireLoopStaff();
+    assertAllowed(canProgressCases(staff.role), "Only clinical staff can write to the receiving clinician.");
+    const text = body.trim();
+    if (!text) throw new Error("Write a note first.");
+    if (text.length > 1000) throw new Error("Keep the note under 1,000 characters.");
+    const { data: referral, error } = await db
+      .from("referrals")
+      .select("id, clinic_id, case_id")
+      .eq("id", referralId)
+      .eq("clinic_id", staff.clinic_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!referral) throw new Error("Referral not found.");
+    const { data: clinic } = await db.from("clinics").select("name").eq("id", staff.clinic_id).single();
+    const { error: insertError } = await db.from("referral_messages").insert({
+      clinic_id: staff.clinic_id,
+      referral_id: referral.id,
+      author_side: "clinic",
+      author_name: `${staff.full_name} · ${clinic?.name ?? "Clinic"}`,
+      author_staff_id: staff.id,
+      body: text,
+    });
+    if (insertError) throw new Error(insertError.message);
+  });
+}
