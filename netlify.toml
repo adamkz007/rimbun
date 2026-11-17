@@ -8,3 +8,7 @@
 # Netlify cron uses UTC. 0 15 * * * = 11:00 PM Malaysia (UTC+8).
 [functions."keep-supabase-active"]
   schedule = "0 15 * * *"
+
+# Safety-net follow-ups: send due check-ins, flag silence for a nurse call.
+[functions."safety-net-tick"]
+  schedule = "*/15 * * * *"

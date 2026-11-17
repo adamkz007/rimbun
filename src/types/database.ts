@@ -365,6 +365,87 @@ export type Database = {
           >;
         Update: Partial<Database["public"]["Tables"]["referrals"]["Row"]>;
       };
+      safety_net_followups: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          patient_id: string;
+          encounter_id: string;
+          protocol_code: string;
+          protocol_version: number;
+          signs: string[];
+          question_ids: string[];
+          doctor_note: string | null;
+          language: "en" | "ms";
+          state: SafetyNetState;
+          route: SafetyNetRoute | null;
+          call_reason: SafetyNetCallReason | null;
+          answers: Record<string, string>;
+          owner_staff_id: string;
+          created_by: string;
+          checkin_due_at: string;
+          current_step_due_at: string | null;
+          sent_at: string | null;
+          responded_at: string | null;
+          completed_at: string | null;
+          escalated_at: string | null;
+          call_attempts: number;
+          closed_at: string | null;
+          closed_by: string | null;
+          closure_reason: SafetyNetClosureReason | null;
+          closure_note: string | null;
+          ai_suggestion: Record<string, unknown> | null;
+          sim_token: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["safety_net_followups"]["Row"]> &
+          Pick<
+            Database["public"]["Tables"]["safety_net_followups"]["Row"],
+            | "clinic_id"
+            | "patient_id"
+            | "encounter_id"
+            | "protocol_code"
+            | "protocol_version"
+            | "owner_staff_id"
+            | "created_by"
+            | "checkin_due_at"
+          >;
+        Update: Partial<Database["public"]["Tables"]["safety_net_followups"]["Row"]>;
+      };
+      safety_net_messages: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          followup_id: string;
+          direction: "out" | "in";
+          kind: "template" | "question" | "text" | "button_reply";
+          body: string;
+          question_id: string | null;
+          options: Array<{ value: string; label: string }> | null;
+          reply_value: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["safety_net_messages"]["Row"]> &
+          Pick<Database["public"]["Tables"]["safety_net_messages"]["Row"], "clinic_id" | "followup_id" | "direction" | "kind" | "body">;
+        Update: Partial<Database["public"]["Tables"]["safety_net_messages"]["Row"]>;
+      };
+      safety_net_events: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          followup_id: string;
+          event_type: string;
+          actor_staff_id: string | null;
+          actor_label: string | null;
+          note: string | null;
+          data: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["safety_net_events"]["Row"]> &
+          Pick<Database["public"]["Tables"]["safety_net_events"]["Row"], "clinic_id" | "followup_id" | "event_type">;
+        Update: Partial<Database["public"]["Tables"]["safety_net_events"]["Row"]>;
+      };
     };
     Functions: {
       get_user_clinic_id: {
@@ -409,6 +490,16 @@ export type CaseClosureReason =
   | "lost_to_follow_up"
   | "deceased";
 export type ReferralStatus = "sent" | "viewed" | "accepted" | "rejected" | "booked" | "attended";
+export type SafetyNetState = "scheduled" | "awaiting_reply" | "answering" | "needs_call" | "escalated" | "closed";
+export type SafetyNetRoute = "green" | "amber" | "red";
+export type SafetyNetCallReason = "amber" | "no_reply" | "incomplete" | "patient_message";
+export type SafetyNetClosureReason =
+  | "improved"
+  | "review_booked"
+  | "blood_test"
+  | "sent_to_emergency"
+  | "unreachable"
+  | "cancelled";
 export type DrugRoute = "oral" | "topical" | "injection" | "inhalation" | "sublingual" | "rectal" | "other";
 
 export type ClinicSettings = {

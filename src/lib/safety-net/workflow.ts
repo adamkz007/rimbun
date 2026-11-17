@@ -128,7 +128,7 @@ export type OutboundMessage =
   | { kind: "template" | "question"; body: string; questionId: string; options: Array<{ value: string; label: string }> }
   | { kind: "text"; body: string };
 
-export type LifecycleEvent = { type: string; note?: string; data?: Record<string, unknown> };
+export type LifecycleEvent = { type: string; note?: string | null; data?: Record<string, unknown> };
 
 export type Outcome = {
   patch: FollowupPatch;
