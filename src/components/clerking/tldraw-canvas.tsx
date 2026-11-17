@@ -1,60 +1,85 @@
 "use client";
 
-import { useCallback, useRef } from "react";
-import { Tldraw, Editor } from "tldraw";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Tldraw, type Editor, type TLEventInfo } from "tldraw";
 import "tldraw/tldraw.css";
+
+export type TldrawCanvasProps = {
+  initialSnapshot: Record<string, unknown> | null;
+  disabled: boolean;
+  /** Called with the editor once mounted, and with null on unmount. */
+  onEditor: (editor: Editor | null) => void;
+  /**
+   * Called on every user change to the document. Fires once per pointer move
+   * while drawing, so it must stay O(1): no serialization, no storage, no
+   * React state updates.
+   */
+  onDocumentChange: () => void;
+  /** Called when a pointer is released, i.e. a stroke or gesture has ended. */
+  onGestureEnd: () => void;
+};
 
 export default function TldrawCanvas({
   initialSnapshot,
-  onChange,
   disabled,
-}: {
-  initialSnapshot: Record<string, unknown> | null;
-  onChange: (snapshot: Record<string, unknown>) => void;
-  disabled: boolean;
-}) {
-  const editorRef = useRef<Editor | null>(null);
+  onEditor,
+  onDocumentChange,
+  onGestureEnd,
+}: TldrawCanvasProps) {
+  const [editor, setEditor] = useState<Editor | null>(null);
+  // tldraw only runs onMount once, so read the latest props through refs.
+  const disabledRef = useRef(disabled);
+  const callbacksRef = useRef({ onEditor, onDocumentChange, onGestureEnd });
+  const initialSnapshotRef = useRef(initialSnapshot);
 
-  const handleMount = useCallback(
-    (editor: Editor) => {
-      editorRef.current = editor;
+  useEffect(() => {
+    callbacksRef.current = { onEditor, onDocumentChange, onGestureEnd };
+  }, [onEditor, onDocumentChange, onGestureEnd]);
 
-      if (initialSnapshot) {
-        try {
-          editor.loadSnapshot(initialSnapshot as any);
-        } catch {
-          // Invalid snapshot data, start fresh
-        }
+  useEffect(() => {
+    disabledRef.current = disabled;
+    editor?.updateInstanceState({ isReadonly: disabled });
+  }, [editor, disabled]);
+
+  const handleMount = useCallback((mounted: Editor) => {
+    const snapshot = initialSnapshotRef.current;
+    if (snapshot) {
+      try {
+        mounted.loadSnapshot(snapshot as Parameters<Editor["loadSnapshot"]>[0]);
+      } catch {
+        // Invalid snapshot data, start fresh
       }
+    }
 
-      if (disabled) {
-        editor.updateInstanceState({ isReadonly: true });
+    mounted.updateInstanceState({ isReadonly: disabledRef.current });
+
+    const unlisten = mounted.store.listen(
+      () => {
+        if (!disabledRef.current) callbacksRef.current.onDocumentChange();
+      },
+      { scope: "document", source: "user" }
+    );
+
+    const handleEvent = (info: TLEventInfo) => {
+      if (info.name === "pointer_up" && !disabledRef.current) {
+        callbacksRef.current.onGestureEnd();
       }
+    };
+    mounted.on("event", handleEvent);
 
-      // Listen for changes and emit snapshots
-      const unsub = editor.store.listen(
-        () => {
-          if (!disabled) {
-            const snapshot = editor.getSnapshot();
-            onChange(snapshot as unknown as Record<string, unknown>);
-          }
-        },
-        { scope: "document", source: "user" }
-      );
+    setEditor(mounted);
+    callbacksRef.current.onEditor(mounted);
 
-      return () => {
-        unsub();
-      };
-    },
-    [initialSnapshot, onChange, disabled]
-  );
+    return () => {
+      unlisten();
+      mounted.off("event", handleEvent);
+      callbacksRef.current.onEditor(null);
+    };
+  }, []);
 
   return (
-    <div className="h-full w-full [&_.tl-background]:bg-white">
-      <Tldraw
-        onMount={handleMount}
-        hideUi={disabled}
-      />
+    <div className="h-full w-full [contain:strict] [&_.tl-background]:bg-white">
+      <Tldraw onMount={handleMount} hideUi={disabled} />
     </div>
   );
 }

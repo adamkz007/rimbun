@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
+import type { Editor } from "tldraw";
 import { Maximize2, Minimize2, Pencil, Save } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,9 @@ import { saveScratchpad } from "@/lib/actions/encounter-actions";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
-const TldrawCanvas = dynamic(() => import("./tldraw-canvas"), {
+const loadTldrawCanvas = () => import("./tldraw-canvas");
+
+const TldrawCanvas = dynamic(loadTldrawCanvas, {
   ssr: false,
   loading: () => (
     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -27,9 +30,52 @@ const TldrawCanvas = dynamic(() => import("./tldraw-canvas"), {
 });
 
 type SaveStatus = "idle" | "unsaved" | "saving" | "saved" | "error";
+type Snapshot = Record<string, unknown>;
 
-function serializeSnapshot(snapshot: Record<string, unknown> | null) {
+/** Write the local draft this long after the last change, if no gesture end came first. */
+const DRAFT_IDLE_MS = 750;
+/** Autosave to the server this long after the last change... */
+const AUTOSAVE_IDLE_MS = 5_000;
+/** ...but never wait longer than this while there are unsaved changes. */
+const AUTOSAVE_MAX_WAIT_MS = 30_000;
+
+function serializeSnapshot(snapshot: Snapshot | null) {
   return JSON.stringify(snapshot ?? null);
+}
+
+function readDraft(key: string): string | null {
+  try {
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** Returns false when the draft could not be stored (quota exceeded, storage blocked). */
+function writeDraft(key: string, value: string) {
+  try {
+    window.sessionStorage.setItem(key, value);
+    return true;
+  } catch {
+    removeDraft(key);
+    return false;
+  }
+}
+
+function removeDraft(key: string) {
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    // Storage unavailable; nothing to clean up.
+  }
+}
+
+function scheduleIdle(callback: () => void) {
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(callback, { timeout: 250 });
+  } else {
+    setTimeout(callback, 0);
+  }
 }
 
 export function ScratchpadCanvas({
@@ -38,33 +84,63 @@ export function ScratchpadCanvas({
   disabled,
 }: {
   encounterId: string;
-  initialData: Record<string, unknown> | null;
+  initialData: Snapshot | null;
   disabled: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  // Once opened, the editor stays mounted (hidden when collapsed) so collapsing
+  // never discards strokes and re-expanding doesn't re-initialize tldraw.
+  const [hasOpened, setHasOpened] = useState(false);
   const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [hasHydrated, setHasHydrated] = useState(false);
-  const [initialSnapshot, setInitialSnapshot] = useState<Record<string, unknown> | null>(initialData);
+  const [initialSnapshot, setInitialSnapshot] = useState<Snapshot | null>(initialData);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const snapshotRef = useRef<Record<string, unknown> | null>(initialData);
-  const pendingSaveVersionRef = useRef(0);
-  const lastSavedVersionRef = useRef(0);
+
+  const editorRef = useRef<Editor | null>(null);
+  /** Latest serialized-able document when the editor is not mounted. */
+  const snapshotRef = useRef<Snapshot | null>(initialData);
+  /** Bumped on every change; cheap. */
+  const versionRef = useRef(0);
+  /** Version last written to the local draft. */
+  const draftVersionRef = useRef(0);
+  /** Version last confirmed saved on the server. */
+  const savedVersionRef = useRef(0);
+  const lastChangeAtRef = useRef(0);
+  const firstUnsavedAtRef = useRef<number | null>(null);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSavedSnapshotRef = useRef(serializeSnapshot(initialData));
+  const inFlightSaveRef = useRef<Promise<unknown> | null>(null);
+  const dirtyRef = useRef(false);
+  const disabledRef = useRef(disabled);
   const draftStorageKey = `clerking:draft:scratchpad:${encounterId}`;
 
   useEffect(() => {
-    const serverSerialized = serializeSnapshot(initialData);
-    lastSavedSnapshotRef.current = serverSerialized;
-    pendingSaveVersionRef.current = 0;
-    lastSavedVersionRef.current = 0;
-    setHasUnsavedChanges(false);
+    disabledRef.current = disabled;
+  }, [disabled]);
 
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current);
-      autosaveTimerRef.current = null;
-    }
+  const clearTimers = useCallback(() => {
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    draftTimerRef.current = null;
+    autosaveTimerRef.current = null;
+  }, []);
+
+  const markClean = useCallback(() => {
+    dirtyRef.current = false;
+    firstUnsavedAtRef.current = null;
+    setHasUnsavedChanges(false);
+  }, []);
+
+  useEffect(() => {
+    const serverSerialized = serializeSnapshot(initialData);
+    clearTimers();
+    versionRef.current = 0;
+    draftVersionRef.current = 0;
+    savedVersionRef.current = 0;
+    // Hydrating from sessionStorage (an external store) on mount / encounter change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    markClean();
 
     if (disabled) {
       snapshotRef.current = initialData;
@@ -74,108 +150,222 @@ export function ScratchpadCanvas({
       return;
     }
 
-    const storedDraft = window.sessionStorage.getItem(draftStorageKey);
+    const storedDraft = readDraft(draftStorageKey);
+    let parsedDraft: Snapshot | null = null;
     if (storedDraft) {
       try {
-        const parsedDraft = JSON.parse(storedDraft) as Record<string, unknown>;
-        snapshotRef.current = parsedDraft;
-        setInitialSnapshot(parsedDraft);
-        const draftIsDirty = storedDraft !== serverSerialized;
-        setHasUnsavedChanges(draftIsDirty);
-        setStatus(draftIsDirty ? "unsaved" : "idle");
+        parsedDraft = JSON.parse(storedDraft) as Snapshot;
       } catch {
-        window.sessionStorage.removeItem(draftStorageKey);
-        snapshotRef.current = initialData;
-        setInitialSnapshot(initialData);
-        setStatus("idle");
+        removeDraft(draftStorageKey);
       }
+    }
+
+    if (parsedDraft && storedDraft !== serverSerialized) {
+      snapshotRef.current = parsedDraft;
+      setInitialSnapshot(parsedDraft);
+      // Treat the restored draft as one unsaved change so Save/autosave pick it up.
+      versionRef.current = 1;
+      draftVersionRef.current = 1;
+      dirtyRef.current = true;
+      firstUnsavedAtRef.current = Date.now();
+      setHasUnsavedChanges(true);
+      setStatus("unsaved");
     } else {
-      snapshotRef.current = initialData;
-      setInitialSnapshot(initialData);
+      snapshotRef.current = parsedDraft ?? initialData;
+      setInitialSnapshot(parsedDraft ?? initialData);
       setStatus("idle");
     }
 
     setHasHydrated(true);
-  }, [disabled, draftStorageKey, encounterId, initialData]);
+  }, [clearTimers, disabled, draftStorageKey, encounterId, initialData, markClean]);
 
-  const saveSnapshot = useCallback(async (versionToSave = pendingSaveVersionRef.current) => {
-    const snapshot = snapshotRef.current;
-    if (!snapshot || disabled) return false;
-    if (versionToSave <= lastSavedVersionRef.current) return true;
+  /** Serialize the current document. Only call off the per-pointer-event path. */
+  const captureSnapshot = useCallback((): Snapshot | null => {
+    const editor = editorRef.current;
+    if (editor) {
+      // Document only: camera, tool and selection are per-device session state.
+      snapshotRef.current = editor.store.getStoreSnapshot("document") as unknown as Snapshot;
+    }
+    return snapshotRef.current;
+  }, []);
+
+  const saveSnapshot = useCallback(async (): Promise<boolean> => {
+    if (disabledRef.current) return false;
+
+    // Single flight: wait for any running save, then save whatever is newest.
+    while (inFlightSaveRef.current) {
+      await inFlightSaveRef.current.catch(() => undefined);
+    }
+
+    const versionToSave = versionRef.current;
+    if (versionToSave <= savedVersionRef.current) return true;
+
+    const snapshot = captureSnapshot();
+    if (!snapshot) return false;
 
     setStatus("saving");
+    const request = saveScratchpad(encounterId, snapshot);
+    inFlightSaveRef.current = request;
 
     try {
-      await saveScratchpad(encounterId, snapshot);
-      lastSavedVersionRef.current = versionToSave;
-      lastSavedSnapshotRef.current = serializeSnapshot(snapshot);
-      window.sessionStorage.removeItem(draftStorageKey);
-      setHasUnsavedChanges(false);
-      setStatus("saved");
+      await request;
+      savedVersionRef.current = Math.max(savedVersionRef.current, versionToSave);
+      if (versionRef.current === versionToSave) {
+        removeDraft(draftStorageKey);
+        markClean();
+        setStatus("saved");
+      } else {
+        setStatus("unsaved");
+      }
       return true;
     } catch {
       setStatus("error");
       return false;
+    } finally {
+      if (inFlightSaveRef.current === request) inFlightSaveRef.current = null;
     }
-  }, [disabled, draftStorageKey, encounterId]);
+  }, [captureSnapshot, draftStorageKey, encounterId, markClean]);
 
-  const handleChange = useCallback((snapshot: Record<string, unknown>) => {
-    snapshotRef.current = snapshot;
-    pendingSaveVersionRef.current += 1;
-
-    if (disabled) return;
-
-    window.sessionStorage.setItem(draftStorageKey, serializeSnapshot(snapshot));
-    setHasUnsavedChanges(true);
-    setStatus("unsaved");
-
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current);
+  /** Persist the local draft now (off the hot path). */
+  const flushDraft = useCallback(() => {
+    if (draftTimerRef.current) {
+      clearTimeout(draftTimerRef.current);
+      draftTimerRef.current = null;
     }
+    if (disabledRef.current || versionRef.current <= draftVersionRef.current) return;
 
-    const versionToSave = pendingSaveVersionRef.current;
-    autosaveTimerRef.current = setTimeout(() => {
-      void saveSnapshot(versionToSave);
-    }, 20000);
-  }, [disabled, draftStorageKey, saveSnapshot]);
+    const version = versionRef.current;
+    const snapshot = captureSnapshot();
+    if (!snapshot) return;
 
-  useEffect(() => {
-    return () => {
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current);
+    if (writeDraft(draftStorageKey, serializeSnapshot(snapshot))) {
+      draftVersionRef.current = version;
+    } else {
+      // Local draft can't be kept (e.g. storage quota): save to the server right away.
+      void saveSnapshot();
+    }
+  }, [captureSnapshot, draftStorageKey, saveSnapshot]);
+
+  const armAutosave = useCallback(() => {
+    if (autosaveTimerRef.current) return;
+
+    const tick = () => {
+      autosaveTimerRef.current = null;
+      if (!dirtyRef.current) return;
+      const firstUnsavedAt = firstUnsavedAtRef.current ?? lastChangeAtRef.current;
+      const dueAt = Math.min(
+        lastChangeAtRef.current + AUTOSAVE_IDLE_MS,
+        firstUnsavedAt + AUTOSAVE_MAX_WAIT_MS
+      );
+      const wait = dueAt - Date.now();
+      if (wait > 0) {
+        autosaveTimerRef.current = setTimeout(tick, wait);
+        return;
       }
-
-      if (!disabled && hasUnsavedChanges) {
-        void saveSnapshot();
-      }
+      flushDraft();
+      void saveSnapshot();
     };
-  }, [disabled, hasUnsavedChanges, saveSnapshot]);
+
+    autosaveTimerRef.current = setTimeout(tick, AUTOSAVE_IDLE_MS);
+  }, [flushDraft, saveSnapshot]);
+
+  const armDraftTimer = useCallback(() => {
+    if (draftTimerRef.current) return;
+
+    const tick = () => {
+      draftTimerRef.current = null;
+      const wait = lastChangeAtRef.current + DRAFT_IDLE_MS - Date.now();
+      if (wait > 0) {
+        draftTimerRef.current = setTimeout(tick, wait);
+        return;
+      }
+      scheduleIdle(flushDraft);
+    };
+
+    draftTimerRef.current = setTimeout(tick, DRAFT_IDLE_MS);
+  }, [flushDraft]);
+
+  // Hot path: runs once per pointer move while drawing. Refs only; timers are
+  // armed once and re-check the last-change time when they fire, instead of
+  // being cleared and re-created on every event.
+  const handleDocumentChange = useCallback(() => {
+    if (disabledRef.current) return;
+
+    versionRef.current += 1;
+    lastChangeAtRef.current = Date.now();
+
+    if (!dirtyRef.current) {
+      dirtyRef.current = true;
+      firstUnsavedAtRef.current = lastChangeAtRef.current;
+      setHasUnsavedChanges(true);
+      setStatus("unsaved");
+    }
+
+    armDraftTimer();
+    armAutosave();
+  }, [armAutosave, armDraftTimer]);
+
+  const handleGestureEnd = useCallback(() => {
+    scheduleIdle(flushDraft);
+  }, [flushDraft]);
+
+  const handleEditor = useCallback((editor: Editor | null) => {
+    if (!editor && editorRef.current) {
+      // Capture the final state before the editor goes away.
+      snapshotRef.current = editorRef.current.store.getStoreSnapshot("document") as unknown as Snapshot;
+    }
+    editorRef.current = editor;
+  }, []);
+
+  // Flush when the tab is hidden or closed (iPadOS may discard background tabs),
+  // and on unmount.
+  useEffect(() => {
+    const flushAndSave = () => {
+      flushDraft();
+      if (dirtyRef.current) void saveSnapshot();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flushAndSave();
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", flushAndSave);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", flushAndSave);
+      clearTimers();
+      flushAndSave();
+    };
+  }, [clearTimers, flushDraft, saveSnapshot]);
 
   const handleSave = useCallback(async () => {
-    if (!snapshotRef.current || disabled) return;
+    if (disabledRef.current) return;
+    if (!editorRef.current && !snapshotRef.current) return;
 
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current);
-      autosaveTimerRef.current = null;
-    }
+    clearTimers();
+    flushDraft();
 
-    if (pendingSaveVersionRef.current === 0) {
-      pendingSaveVersionRef.current = 1;
+    // Allow an explicit save of a restored draft or an untouched canvas.
+    if (versionRef.current <= savedVersionRef.current && dirtyRef.current) {
+      versionRef.current = savedVersionRef.current + 1;
     }
 
     const saved = await saveSnapshot();
     if (saved) {
       toast.success("Scratchpad saved");
-    } else if (snapshotRef.current) {
+    } else {
       toast.error("Scratchpad save failed", "Please try again.");
     }
-  }, [disabled, saveSnapshot]);
+  }, [clearTimers, flushDraft, saveSnapshot]);
 
   const requestExpandedChange = useCallback((open: boolean) => {
     if (open) {
+      setHasOpened(true);
       setIsExpanded(true);
       return;
     }
+
+    flushDraft();
 
     if (disabled || !hasUnsavedChanges) {
       setIsExpanded(false);
@@ -183,7 +373,7 @@ export function ScratchpadCanvas({
     }
 
     setIsCloseConfirmOpen(true);
-  }, [disabled, hasUnsavedChanges]);
+  }, [disabled, flushDraft, hasUnsavedChanges]);
 
   const handleCloseDecision = useCallback(async (shouldSave: boolean) => {
     if (shouldSave) {
@@ -208,12 +398,14 @@ export function ScratchpadCanvas({
   return (
     <>
       <div className="pointer-events-none fixed right-4 bottom-4 z-40 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
-        {isExpanded ? (
+        {hasOpened && (
           <div
             className={cn(
               "pointer-events-auto overflow-hidden rounded-2xl border border-white/10 bg-slate-950 text-white shadow-2xl",
-              "h-[min(30rem,calc(100vh-6rem))] w-[min(48rem,calc(100vw-2rem))]"
+              "h-[min(30rem,calc(100vh-6rem))] w-[min(48rem,calc(100vw-2rem))]",
+              !isExpanded && "hidden"
             )}
+            aria-hidden={!isExpanded}
           >
             <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
               <div className="flex items-center gap-2">
@@ -263,14 +455,21 @@ export function ScratchpadCanvas({
               {hasHydrated && (
                 <TldrawCanvas
                   initialSnapshot={initialSnapshot}
-                  onChange={handleChange}
                   disabled={disabled}
+                  onEditor={handleEditor}
+                  onDocumentChange={handleDocumentChange}
+                  onGestureEnd={handleGestureEnd}
                 />
               )}
             </div>
           </div>
-        ) : (
-          <div className="pointer-events-auto flex min-h-12 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/95 px-4 py-2 text-white shadow-2xl backdrop-blur">
+        )}
+        {!isExpanded && (
+          <div
+            onPointerEnter={() => void loadTldrawCanvas()}
+            onFocus={() => void loadTldrawCanvas()}
+            className="pointer-events-auto flex min-h-12 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/95 px-4 py-2 text-white shadow-2xl backdrop-blur"
+          >
             <div className="flex items-center gap-2">
               <Pencil className="h-4 w-4 text-white/80" />
               <div>
@@ -322,7 +521,7 @@ export function ScratchpadCanvas({
           <DialogHeader>
             <DialogTitle>Save scratchpad?</DialogTitle>
             <DialogDescription id="scratchpad-close-description">
-              Save the current scratchpad to this encounter before closing.
+              Save the current scratchpad to this encounter before closing? If you don&apos;t, it stays as an unsaved draft and is saved when the encounter is completed.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -332,7 +531,7 @@ export function ScratchpadCanvas({
                 void handleCloseDecision(false);
               }}
             >
-              Close without saving
+              Keep as draft
             </Button>
             <Button
               onClick={() => {
