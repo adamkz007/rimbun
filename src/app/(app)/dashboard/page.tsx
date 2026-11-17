@@ -200,7 +200,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           />
           <span className="font-medium">
             {redFlagFollowups > 0
-              ? `${redFlagFollowups} safety-net check-in${redFlagFollowups === 1 ? "" : "s"} reported red flags: a doctor needs to act now`
+              ? `${redFlagFollowups} high-risk safety-net follow-up${redFlagFollowups === 1 ? "" : "s"}: a doctor needs to act now`
               : callFollowups > 0
                 ? "Safety-net check-ins need a call"
                 : "Safety-net check-ins are ready to close"}
