@@ -70,15 +70,18 @@ export function FollowupActions({
   const [dialog, setDialog] = useState<"call" | "escalate" | "close" | null>(null);
   const [outcome, setOutcome] = useState<"reached" | "no_answer" | "wrong_number">("reached");
   const [note, setNote] = useState("");
-  const [reason, setReason] = useState<ClosureReason>("improved");
+  const [reason, setReason] = useState<ClosureReason>("sent_to_emergency");
   const closed = followup.state === "closed";
   const isDoctor = role === "doctor";
   const needsDoctor = followup.state === "escalated" || followup.route === "red";
-  const reasons = CLOSURE_REASONS.filter((value) => (value === "cancelled" ? followup.state === "scheduled" : true));
+  // Review, test and minor-illness closures go through the decision card.
+  const reasons = CLOSURE_REASONS.filter((value) =>
+    value === "cancelled" ? followup.state === "scheduled" : value === "sent_to_emergency" || value === "unreachable"
+  );
 
   function open(kind: "call" | "escalate" | "close") {
     setNote("");
-    setReason(followup.state === "scheduled" ? "cancelled" : "improved");
+    setReason(followup.state === "scheduled" ? "cancelled" : "sent_to_emergency");
     setDialog(kind);
   }
 
@@ -86,7 +89,7 @@ export function FollowupActions({
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Actions</CardTitle>
+          <CardTitle className="text-sm">Calls and other outcomes</CardTitle>
           {needsDoctor && !closed ? (
             <CardDescription className="text-destructive">Red flag: a doctor must review and close this.</CardDescription>
           ) : null}
@@ -104,9 +107,13 @@ export function FollowupActions({
                   Escalate to doctor
                 </Button>
               ) : null}
-              <Button disabled={isPending || (needsDoctor && !isDoctor)} onClick={() => open("close")}>
+              <Button
+                variant="outline"
+                disabled={isPending || (followup.state !== "scheduled" && !isDoctor)}
+                onClick={() => open("close")}
+              >
                 <XCircle className="mr-2 h-4 w-4" />
-                {followup.state === "scheduled" ? "Cancel or close" : "Close follow-up"}
+                {followup.state === "scheduled" ? "Cancel check-in" : "Emergency or unreachable"}
               </Button>
             </>
           ) : (
@@ -219,9 +226,10 @@ export function FollowupActions({
       <Dialog open={dialog === "close"} onOpenChange={(value) => !value && setDialog(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Close follow-up</DialogTitle>
+            <DialogTitle>{followup.state === "scheduled" ? "Cancel check-in" : "Close: emergency or unreachable"}</DialogTitle>
             <DialogDescription>
-              Record the outcome. Red flags, emergency referrals and unreachable patients need a doctor.
+              Reviews, tests and minor-illness closures are in the Doctor decision card. Emergency referrals and
+              unreachable patients need a doctor.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -239,11 +247,6 @@ export function FollowupActions({
                   </option>
                 ))}
               </select>
-              {reason === "blood_test" ? (
-                <p className="text-xs text-muted-foreground">
-                  When the result comes back, log it in Care Loop so it is tracked to closure.
-                </p>
-              ) : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor="close-note">Note</Label>

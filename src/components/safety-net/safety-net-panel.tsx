@@ -14,13 +14,27 @@ import { PATIENT_LANGUAGES, type PatientLanguage } from "@/lib/care-loop/catalog
 import { formatClinicDateTime } from "@/lib/care-loop/format";
 import { LANGUAGE_LABELS } from "@/lib/care-loop/messages";
 import { scheduleSafetyNet, suggestSafetyNet } from "@/lib/actions/safety-net-actions";
-import { PROTOCOL_STATUS, PROTOCOLS, getProtocol } from "@/lib/safety-net/protocols";
+import {
+  CAUSE_LEVEL_LABELS,
+  getProtocol,
+  PROTOCOL_STATUS,
+  PROTOCOLS,
+  STARTING_LEVELS,
+  type Protocol,
+  type StartingLevel,
+} from "@/lib/safety-net/protocols";
 import type { Suggestion } from "@/lib/safety-net/suggest";
 import { STATE_LABELS, type FollowupState } from "@/lib/safety-net/workflow";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const SELECT_CLASS = "h-9 w-full rounded-md border bg-transparent px-3 text-sm";
+
+type CauseChoice = { cause: string; level: StartingLevel; on: boolean };
+
+function defaultCauses(protocol: Protocol): CauseChoice[] {
+  return protocol.causes.map((cause) => ({ cause: cause.id, level: cause.defaultLevel, on: true }));
+}
 const HOUR_CHOICES = [4, 6, 12, 24, 36, 48, 72, 96, 120];
 
 export type SafetyNetPanelData = {
@@ -48,6 +62,7 @@ export function SafetyNetPanel({
   const [protocolCode, setProtocolCode] = useState(PROTOCOLS[0].code);
   const [hours, setHours] = useState(PROTOCOLS[0].defaultCheckInHours);
   const [signs, setSigns] = useState<string[]>(PROTOCOLS[0].signs.map((sign) => sign.id));
+  const [causes, setCauses] = useState<CauseChoice[]>(defaultCauses(PROTOCOLS[0]));
   const [language, setLanguage] = useState<PatientLanguage>(data.patient.preferredLanguage);
   const [note, setNote] = useState("");
   const [consent, setConsent] = useState(false);
@@ -62,6 +77,7 @@ export function SafetyNetPanel({
     setProtocolCode(code);
     setHours(next.defaultCheckInHours);
     setSigns(next.signs.map((sign) => sign.id));
+    setCauses(defaultCauses(next));
   }
 
   async function askClaude() {
@@ -80,6 +96,15 @@ export function SafetyNetPanel({
         setProtocolCode(value.protocolCode);
         setHours(value.checkInHours);
         setSigns(value.signs);
+        const suggestedProtocol = getProtocol(value.protocolCode);
+        if (suggestedProtocol) {
+          setCauses(
+            suggestedProtocol.causes.map((cause) => {
+              const pick = value.causes.find((item) => item.cause === cause.id);
+              return { cause: cause.id, level: pick?.level ?? cause.defaultLevel, on: !!pick };
+            })
+          );
+        }
       }
     } finally {
       setSuggesting(false);
@@ -93,6 +118,7 @@ export function SafetyNetPanel({
         protocolCode,
         checkInHours: hours,
         signs,
+        causes: causes.filter((item) => item.on).map(({ cause, level }) => ({ cause, level })),
         language,
         note,
         consentConfirmed: data.patient.hasConsent || consent,
@@ -198,6 +224,68 @@ export function SafetyNetPanel({
                 {PROTOCOL_STATUS}
               </Badge>
             </div>
+
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Possible causes</legend>
+              <p className="text-xs text-muted-foreground">
+                Rimbun will ask about{" "}
+                {causes.filter((item) => item.on).length
+                  ? causes
+                      .filter((item) => item.on)
+                      .map((item) => protocol.causes.find((cause) => cause.id === item.cause)?.label)
+                      .join(", ")
+                  : "the warning signs only"}
+                . Red-flag questions are always asked; untick a cause to stop asking about it.
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {causes.map((item) => {
+                  const cause = protocol.causes.find((entry) => entry.id === item.cause);
+                  if (!cause) return null;
+                  return (
+                    <span
+                      key={item.cause}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs",
+                        !item.on && "opacity-50",
+                        item.on && item.level === "watch" && "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950"
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="size-3.5"
+                        aria-label={`Ask about ${cause.label}`}
+                        checked={item.on}
+                        onChange={(event) =>
+                          setCauses((value) =>
+                            value.map((entry) => (entry.cause === item.cause ? { ...entry, on: event.target.checked } : entry))
+                          )
+                        }
+                      />
+                      {cause.label}
+                      <select
+                        aria-label={`${cause.label} starting level`}
+                        className="rounded border-0 bg-transparent py-0 pl-0.5 pr-0 text-xs text-muted-foreground"
+                        value={item.level}
+                        disabled={!item.on}
+                        onChange={(event) =>
+                          setCauses((value) =>
+                            value.map((entry) =>
+                              entry.cause === item.cause ? { ...entry, level: event.target.value as StartingLevel } : entry
+                            )
+                          )
+                        }
+                      >
+                        {STARTING_LEVELS.map((level) => (
+                          <option key={level} value={level}>
+                            {CAUSE_LEVEL_LABELS[level].toLowerCase()}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+                  );
+                })}
+              </div>
+            </fieldset>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">

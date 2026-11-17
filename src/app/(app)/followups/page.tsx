@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { FollowupDue, FollowupStateBadge, PrototypeNotice, RouteBadge } from "@/components/safety-net/badges";
+import { FollowupDue, FollowupStateBadge, PrototypeNotice, RiskBadge, stateDetail } from "@/components/safety-net/badges";
 import { RunDueButton } from "@/components/safety-net/followup-controls";
 import { requirePageAccess } from "@/lib/auth";
 import { formatClinicDate, formatClinicDateTime } from "@/lib/care-loop/format";
@@ -10,6 +10,7 @@ import {
   CLOSURE_REASON_LABELS,
   compareForAction,
   isOverdue,
+  summarizeAnswers,
   worklistOf,
   WORKLIST_LABELS,
   WORKLISTS,
@@ -27,6 +28,21 @@ type Row = Tables<"safety_net_followups"> & {
 
 function first<T>(value: Relation<T> | undefined) {
   return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
+/** A row whose risk changed in the last few minutes gets a short highlight. */
+const MOVED_WINDOW_MS = 10 * 60 * 1000;
+
+function rowSummary(row: Row) {
+  const protocol = getProtocol(row.protocol_code);
+  const answers = protocol ? summarizeAnswers(protocol, row.answers ?? {}) : null;
+  if (answers) return answers;
+  if (row.state === "scheduled") return `Check-in ${formatClinicDateTime(row.checkin_due_at)}`;
+  if (row.state === "awaiting_reply" && row.sent_at) {
+    return `Check-in sent ${formatClinicDateTime(row.sent_at)}`;
+  }
+  if (row.call_attempts > 0) return `${row.call_attempts} unanswered call${row.call_attempts === 1 ? "" : "s"}`;
+  return "No answers yet";
 }
 
 export default async function FollowupsPage({
@@ -61,9 +77,7 @@ export default async function FollowupsPage({
   const visible = rows
     .filter((row) => worklistOf(row.state) === list)
     .sort((left, right) =>
-      list === "closed"
-        ? (right.closed_at ?? "").localeCompare(left.closed_at ?? "")
-        : compareForAction(left, right)
+      list === "closed" ? (right.closed_at ?? "").localeCompare(left.closed_at ?? "") : compareForAction(left, right)
     );
 
   return (
@@ -86,7 +100,7 @@ export default async function FollowupsPage({
           className="flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100"
         >
           <span className="size-2 rounded-full bg-red-500" aria-hidden="true" />
-          {escalated} patient{escalated === 1 ? "" : "s"} reported red flags. A doctor needs to act now.
+          {escalated} high-risk follow-up{escalated === 1 ? "" : "s"}: a doctor needs to act now.
         </Link>
       ) : null}
 
@@ -114,43 +128,48 @@ export default async function FollowupsPage({
         </Card>
       ) : (
         <div className="space-y-1.5">
+          {list !== "closed" ? (
+            <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Sorted by risk, then due time</span>
+              <span>Updated from patient replies</span>
+            </div>
+          ) : null}
           {visible.map((row) => {
             const patient = first(row.patients);
             const owner = first(row.owner);
             const protocol = getProtocol(row.protocol_code);
+            const moved =
+              row.state !== "closed" &&
+              !!row.route_changed_at &&
+              now.getTime() - new Date(row.route_changed_at).getTime() < MOVED_WINDOW_MS;
+            const detail = stateDetail(row.state, row.call_reason);
             return (
               <Link key={row.id} href={`/followups/${row.id}`}>
                 <Card
                   className={cn(
                     "transition-colors hover:border-primary/50",
-                    row.state === "escalated" && "border-red-300 dark:border-red-800",
+                    moved && "ring-2 ring-amber-400 ring-offset-1 ring-offset-background",
                     isOverdue(row, now) && "border-l-4 border-l-destructive"
                   )}
                 >
-                  <CardContent className="grid gap-2 px-4 py-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center">
+                  <CardContent className="grid gap-2 px-4 py-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,0.8fr)_auto] lg:items-center">
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate text-sm font-medium">{patient?.full_name ?? "Unknown patient"}</p>
-                        <RouteBadge route={row.route} />
+                        <RiskBadge route={row.route} state={row.state} />
+                        {moved ? <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300">Moved just now</span> : null}
                       </div>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {protocol?.label ?? row.protocol_code}
-                        {patient ? ` · MRN ${patient.mrn}` : ""}
-                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{rowSummary(row)}</p>
                     </div>
                     <div className="space-y-1">
-                      <FollowupStateBadge state={row.state} callReason={row.call_reason} />
-                      <p className="text-xs text-muted-foreground">
+                      <FollowupStateBadge state={row.state} />
+                      <p className="truncate text-xs text-muted-foreground">
                         {row.state === "closed" && row.closed_at
                           ? `${row.closure_reason ? CLOSURE_REASON_LABELS[row.closure_reason] : "Closed"} · ${formatClinicDate(row.closed_at)}`
-                          : row.state === "scheduled"
-                            ? `Check-in ${formatClinicDateTime(row.checkin_due_at)}`
-                            : row.call_attempts > 0
-                              ? `${row.call_attempts} unanswered call${row.call_attempts === 1 ? "" : "s"}`
-                              : null}
+                          : detail ?? protocol?.label ?? row.protocol_code}
                       </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">Doctor {owner?.full_name ?? "–"}</p>
+                    <p className="text-xs text-muted-foreground">Owner {owner?.full_name ?? "–"}</p>
                     <FollowupDue state={row.state} dueAt={row.current_step_due_at} now={now} />
                   </CardContent>
                 </Card>

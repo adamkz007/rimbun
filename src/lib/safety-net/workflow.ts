@@ -611,12 +611,13 @@ export function checkClosure(input: {
   const needsDoctor =
     isHighRisk(input) ||
     input.state === "ready_to_close" ||
+    input.reason === "improved" ||
     input.reason === "unreachable" ||
     input.reason === "sent_to_emergency";
   if (needsDoctor && input.role !== "doctor") {
     return {
       ok: false,
-      error: "A doctor must close a follow-up with red flags, one ready for sign-off, or one closed without reaching the patient.",
+      error: "A doctor must close this: red flags, minor-illness sign-off, emergency referral or an unreachable patient.",
     };
   }
 

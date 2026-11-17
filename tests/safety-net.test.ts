@@ -440,6 +440,7 @@ test("closure needs a note; red flags, sign-off and unreachable patients need a 
   assert.deepEqual(checkClosure({ ...base, role: "nurse", reason: "review_booked" }), { ok: true });
   assert.equal(checkClosure({ ...base, role: "nurse", reason: "improved", note: " " }).ok, false);
   assert.equal(checkClosure({ ...base, role: "nurse", reason: "unreachable" }).ok, false);
+  assert.equal(checkClosure({ ...base, role: "nurse", reason: "improved" }).ok, false, "minor illness is a doctor's sign-off");
   assert.equal(checkClosure({ ...base, role: "doctor", reason: "unreachable" }).ok, true);
   assert.equal(checkClosure({ ...base, role: "nurse", state: "escalated", route: "red", reason: "review_booked" }).ok, false);
   assert.equal(checkClosure({ ...base, role: "nurse", state: "ready_to_close", route: "green", reason: "improved" }).ok, false);
