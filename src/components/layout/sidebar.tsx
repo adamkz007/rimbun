@@ -13,11 +13,14 @@ import {
   Settings,
   LayoutDashboard,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { RimbunLogo, RimbunMark } from "@/components/branding/rimbun-logo";
 import { ClinicDetailsCard } from "@/components/layout/clinic-details-card";
+import { NAV_COOKIE } from "@/lib/nav-preference";
 import { isModuleVisibleInNav } from "@/lib/modules";
 import { hasAccess } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
@@ -46,6 +49,7 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar({
   role,
   clinic,
+  initialCollapsed = false,
 }: {
   role: StaffRole;
   clinic: {
@@ -54,9 +58,12 @@ export function Sidebar({
     registration_number: string | null;
     settings: ClinicSettings;
   } | null;
+  /** Read from the nav cookie on the server so the first paint matches the saved choice. */
+  initialCollapsed?: boolean;
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
   const clinicName = clinic?.name ?? "Clinic";
   const clinicSettings = clinic?.settings;
 
@@ -89,30 +96,45 @@ export function Sidebar({
     };
   }, [mobileOpen]);
 
+  function toggleCollapsed() {
+    const next = !collapsed;
+    setCollapsed(next);
+    document.cookie = `${NAV_COOKIE}=${next ? "collapsed" : "expanded"}; path=/; max-age=31536000; samesite=lax`;
+  }
+
   const closeMobile = () => setMobileOpen(false);
 
-  const navLinks = (compact: boolean) =>
+  // `rail`: icons only below lg, and at every width when the user collapsed it.
+  const navLinks = (rail: boolean) =>
     visibleItems.map((item) => {
       const isActive = pathname.startsWith(item.href);
+      const iconOnly = rail && collapsed;
       return (
         <Link
           key={item.href}
           href={item.href}
           onClick={closeMobile}
-          title={compact ? item.label : undefined}
+          title={rail ? item.label : undefined}
           aria-current={isActive ? "page" : undefined}
           className={cn(
-            "flex items-center rounded-md text-sm font-medium transition-colors",
-            compact
-              ? "h-10 w-10 justify-center lg:h-auto lg:w-auto lg:justify-start lg:gap-3 lg:px-3 lg:py-2"
-              : "gap-3 px-3 py-2.5",
+            "group/nav relative flex items-center rounded-xl text-sm font-medium transition-colors duration-150",
+            rail
+              ? iconOnly
+                ? "size-10 justify-center"
+                : "size-10 justify-center lg:h-10 lg:w-auto lg:justify-start lg:gap-3 lg:px-3"
+              : "h-11 gap-3 px-3",
             isActive
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              ? "bg-white/14 text-leaf-paper"
+              : "text-leaf-on-ink/70 hover:bg-white/8 hover:text-leaf-paper"
           )}
         >
-          <item.icon className="h-4 w-4 shrink-0" />
-          <span className={cn(compact && "sr-only lg:not-sr-only")}>{item.label}</span>
+          {isActive ? (
+            <span className="absolute top-2 bottom-2 -left-2 w-1 rounded-r-full bg-leaf-amber" aria-hidden="true" />
+          ) : null}
+          <item.icon className="size-[1.125rem] shrink-0" />
+          <span className={cn(rail && (iconOnly ? "sr-only" : "sr-only lg:not-sr-only lg:truncate"))}>
+            {item.label}
+          </span>
         </Link>
       );
     });
@@ -123,7 +145,7 @@ export function Sidebar({
       {!mobileOpen && (
         <button
           type="button"
-          className="fixed top-2.5 left-3 z-50 rounded-md border bg-background p-2 sm:hidden"
+          className="fixed top-2.5 left-3 z-50 rounded-xl border bg-card p-2 shadow-sm sm:hidden"
           onClick={() => setMobileOpen(true)}
           aria-label="Open navigation menu"
           aria-expanded={false}
@@ -135,15 +157,15 @@ export function Sidebar({
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 sm:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
-          <div className="absolute inset-0 bg-black/40" onClick={closeMobile} />
-          <aside className="relative flex h-dvh w-72 max-w-[85vw] flex-col bg-background shadow-xl">
-            <div className="flex h-14 shrink-0 items-center border-b px-4">
+          <div className="absolute inset-0 bg-leaf-ink/40 backdrop-blur-[2px]" onClick={closeMobile} />
+          <aside className="relative flex h-dvh w-72 max-w-[85vw] flex-col bg-leaf-ink text-leaf-on-ink shadow-xl">
+            <div className="flex h-16 shrink-0 items-center px-5">
               <Link href="/dashboard" className="flex items-center gap-2" onClick={closeMobile}>
-                <RimbunLogo className="text-xl" />
+                <RimbunLogo variant="reversed" className="text-xl" />
               </Link>
               <button
                 type="button"
-                className="ml-auto rounded-md p-2 hover:bg-muted"
+                className="ml-auto rounded-lg p-2 hover:bg-white/8"
                 onClick={closeMobile}
                 aria-label="Close navigation menu"
               >
@@ -151,34 +173,64 @@ export function Sidebar({
               </button>
             </div>
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-              <div className="px-4 py-2">
-                <p className="truncate text-xs text-muted-foreground">{clinicName}</p>
-              </div>
-              <nav className="space-y-1 px-2 py-2">{navLinks(false)}</nav>
-              <ClinicDetailsCard clinic={clinic} role={role} />
+              <p className="truncate px-5 pb-2 text-xs text-leaf-on-ink/60">{clinicName}</p>
+              <nav className="space-y-1 px-3 py-2">{navLinks(false)}</nav>
+              <ClinicDetailsCard clinic={clinic} role={role} tone="dark" />
             </div>
           </aside>
         </div>
       )}
 
-      {/* Tablet icon rail (sm–lg) and full desktop sidebar (lg+) */}
-      <aside className="hidden h-dvh w-16 shrink-0 flex-col border-r bg-background sm:flex lg:w-56">
-        <div className="flex h-14 shrink-0 items-center justify-center border-b lg:justify-start lg:px-4">
+      {/* Rail: icons on tablets, and on desktop when collapsed; full menu on desktop otherwise */}
+      <aside
+        className={cn(
+          "hidden h-dvh shrink-0 flex-col bg-leaf-ink text-leaf-on-ink transition-[width] duration-200 sm:flex",
+          collapsed ? "w-[4.5rem]" : "w-[4.5rem] lg:w-60"
+        )}
+        aria-label="Main navigation"
+      >
+        <div
+          className={cn(
+            "flex h-16 shrink-0 items-center justify-center",
+            !collapsed && "lg:justify-start lg:px-5"
+          )}
+        >
           <Link href="/dashboard" className="flex items-center gap-2" aria-label="Rimbun dashboard">
-            <RimbunMark className="size-7 lg:hidden" />
-            <RimbunLogo className="hidden text-xl lg:inline-flex" />
+            <RimbunMark variant="reversed" className={cn("size-8", !collapsed && "lg:hidden")} />
+            {!collapsed ? <RimbunLogo variant="reversed" className="hidden text-xl lg:inline-flex" /> : null}
           </Link>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <div className="hidden px-4 py-2 lg:block">
-            <p className="truncate text-xs text-muted-foreground">{clinicName}</p>
-          </div>
-          <nav className="flex flex-col items-center gap-1 px-2 py-3 lg:items-stretch lg:py-2">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+          {!collapsed ? (
+            <p className="hidden truncate px-5 pb-2 text-xs text-leaf-on-ink/60 lg:block">{clinicName}</p>
+          ) : null}
+          <nav
+            className={cn(
+              "flex flex-col items-center gap-1 px-3 py-2",
+              !collapsed && "lg:items-stretch"
+            )}
+          >
             {navLinks(true)}
           </nav>
-          <div className="hidden lg:contents">
-            <ClinicDetailsCard clinic={clinic} role={role} />
-          </div>
+          {!collapsed ? (
+            <div className="hidden lg:contents">
+              <ClinicDetailsCard clinic={clinic} role={role} tone="dark" />
+            </div>
+          ) : (
+            <div className="mt-auto" />
+          )}
+        </div>
+        <div className={cn("hidden shrink-0 border-t border-white/10 p-3 lg:flex", collapsed ? "justify-center" : "justify-end")}>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className="flex size-9 items-center justify-center rounded-lg text-leaf-on-ink/70 transition-colors hover:bg-white/8 hover:text-leaf-paper"
+            aria-label={collapsed ? "Expand menu" : "Collapse menu"}
+            aria-expanded={!collapsed}
+            title={collapsed ? "Expand menu" : "Collapse menu"}
+          >
+            {collapsed ? <PanelLeftOpen className="size-[1.125rem]" /> : <PanelLeftClose className="size-[1.125rem]" />}
+          </button>
         </div>
       </aside>
     </>

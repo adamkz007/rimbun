@@ -50,38 +50,39 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* App theme mapped onto the leaf-cross brand palette (see the @theme block below). */
+  --background: oklch(97.8% 0.004 122);
+  --foreground: oklch(21.9% 0.025 163);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(21.9% 0.025 163);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(21.9% 0.025 163);
+  --primary: oklch(30.9% 0.05 166);
+  --primary-foreground: oklch(97.8% 0.004 122);
+  --secondary: oklch(95.4% 0.007 132);
+  --secondary-foreground: oklch(30.9% 0.05 166);
+  --muted: oklch(95.4% 0.007 132);
+  --muted-foreground: oklch(43.8% 0.029 158);
+  --accent: oklch(95.4% 0.007 132);
+  --accent-foreground: oklch(30.9% 0.05 166);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --border: oklch(90.9% 0.011 150);
+  --input: oklch(90.9% 0.011 150);
+  --ring: oklch(53% 0.1 158);
+  --chart-1: oklch(53% 0.1 158);
+  --chart-2: oklch(76% 0.13 75);
+  --chart-3: oklch(79.8% 0.072 152);
+  --chart-4: oklch(30.9% 0.05 166);
+  --chart-5: oklch(66% 0.12 35);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: oklch(30.9% 0.05 166);
+  --sidebar-foreground: oklch(89.1% 0.024 155);
+  --sidebar-primary: oklch(79.8% 0.072 152);
+  --sidebar-primary-foreground: oklch(30.9% 0.05 166);
+  --sidebar-accent: oklch(1 0 0 / 14%);
+  --sidebar-accent-foreground: oklch(97.8% 0.004 122);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(79.8% 0.072 152);
 }
 
 .dark {
@@ -143,4 +144,8 @@
   --color-leaf-muted: oklch(43.8% 0.029 158);
   --color-leaf-rule: oklch(90.9% 0.011 150);
   --color-leaf-on-ink: oklch(89.1% 0.024 155);
+  /* Warm accent for attention and highlights, paired with the leaf greens. */
+  --color-leaf-amber: oklch(76% 0.13 75);
+  --color-leaf-amber-soft: oklch(96% 0.035 85);
+  --color-leaf-amber-ink: oklch(46% 0.1 60);
 }
