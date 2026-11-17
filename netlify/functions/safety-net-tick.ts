@@ -1,7 +1,7 @@
 // Runs the safety-net follow-up scheduler: sends due WhatsApp check-ins and
 // turns overdue silence into nurse calls. Schedule set in netlify.toml.
 
-export default async () => {
+const safetyNetTick = async () => {
   const base = process.env.URL;
   const secret = process.env.SAFETY_NET_CRON_SECRET;
   if (!base || !secret) {
@@ -21,3 +21,5 @@ export default async () => {
   console.log("safety-net-tick:", body);
   return new Response(body, { status: 200 });
 };
+
+export default safetyNetTick;

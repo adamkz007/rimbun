@@ -152,6 +152,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const loopOverdue = loopOverdueRes.count ?? 0;
 
+  // Safety-net follow-ups needing a person now: red flags first, then nurse calls.
+  const followupsVisible = loopEnabled && (staff.role === "doctor" || staff.role === "nurse");
+  const { data: followupAction } = followupsVisible
+    ? await supabase
+        .from("safety_net_followups")
+        .select("state")
+        .eq("clinic_id", staff.clinic_id)
+        .in("state", ["escalated", "needs_call"])
+    : { data: [] as Array<{ state: string }> };
+  const redFlagFollowups = (followupAction ?? []).filter((row) => row.state === "escalated").length;
+  const callFollowups = (followupAction ?? []).filter((row) => row.state === "needs_call").length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -171,6 +183,36 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </Link>
         ) : null}
       </div>
+
+      {redFlagFollowups > 0 || callFollowups > 0 ? (
+        <Link
+          href="/followups?list=action"
+          className={
+            redFlagFollowups > 0
+              ? "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100"
+              : "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-leaf-amber/50 bg-leaf-amber-soft px-4 py-3 text-sm text-leaf-amber-ink"
+          }
+        >
+          <span
+            className={`size-2.5 rounded-full ${redFlagFollowups > 0 ? "bg-red-500" : "bg-leaf-amber"}`}
+            aria-hidden="true"
+          />
+          <span className="font-medium">
+            {redFlagFollowups > 0
+              ? `${redFlagFollowups} safety-net check-in${redFlagFollowups === 1 ? "" : "s"} reported red flags: a doctor needs to act now`
+              : "Safety-net check-ins need a call"}
+          </span>
+          {redFlagFollowups > 0 && callFollowups > 0 ? (
+            <span>
+              · {callFollowups} more need{callFollowups === 1 ? "s" : ""} a nurse call
+            </span>
+          ) : redFlagFollowups === 0 ? (
+            <span>
+              {callFollowups} patient{callFollowups === 1 ? "" : "s"} to call
+            </span>
+          ) : null}
+        </Link>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {activeEncounterCardEnabled ? (
