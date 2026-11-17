@@ -285,6 +285,7 @@ export type Database = {
           closure_reason: CaseClosureReason | null;
           closure_note: string | null;
           reopened_count: number;
+          followup_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -355,6 +356,8 @@ export type Database = {
           responded_at: string | null;
           reject_reason: string | null;
           appointment_on: string | null;
+          appointment_time: string | null;
+          appointment_place: string | null;
           outcome_note: string | null;
           attended_on: string | null;
         };
@@ -364,6 +367,24 @@ export type Database = {
             "clinic_id" | "case_id" | "receiving_facility" | "letter" | "token_hash" | "expires_at" | "created_by"
           >;
         Update: Partial<Database["public"]["Tables"]["referrals"]["Row"]>;
+      };
+      referral_messages: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          referral_id: string;
+          author_side: "clinic" | "receiver";
+          author_name: string;
+          author_staff_id: string | null;
+          body: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["referral_messages"]["Row"]> &
+          Pick<
+            Database["public"]["Tables"]["referral_messages"]["Row"],
+            "clinic_id" | "referral_id" | "author_side" | "author_name" | "body"
+          >;
+        Update: Partial<Database["public"]["Tables"]["referral_messages"]["Row"]>;
       };
       safety_net_followups: {
         Row: {
@@ -395,6 +416,12 @@ export type Database = {
           closure_reason: SafetyNetClosureReason | null;
           closure_note: string | null;
           ai_suggestion: Record<string, unknown> | null;
+          differential: SafetyNetDifferentialEntry[];
+          pending_question_id: string | null;
+          route_changed_at: string | null;
+          review_at: string | null;
+          ordered_test_code: string | null;
+          ai_read: Record<string, unknown> | null;
           sim_token: string | null;
           created_at: string;
           updated_at: string;
@@ -490,9 +517,23 @@ export type CaseClosureReason =
   | "lost_to_follow_up"
   | "deceased";
 export type ReferralStatus = "sent" | "viewed" | "accepted" | "rejected" | "booked" | "attended";
-export type SafetyNetState = "scheduled" | "awaiting_reply" | "answering" | "needs_call" | "escalated" | "closed";
+export type SafetyNetState =
+  | "scheduled"
+  | "awaiting_reply"
+  | "answering"
+  | "needs_call"
+  | "escalated"
+  | "ready_to_close"
+  | "closed";
 export type SafetyNetRoute = "green" | "amber" | "red";
-export type SafetyNetCallReason = "amber" | "no_reply" | "incomplete" | "patient_message";
+export type SafetyNetCallReason = "amber" | "no_reply" | "incomplete" | "patient_message" | "unsure" | "kept_open";
+export type SafetyNetDifferentialEntry = {
+  cause: string;
+  initial: "likely" | "watch" | "possible";
+  level: "likely" | "watch" | "possible" | "ruled_out" | "raised";
+  questionId?: string;
+  value?: string;
+};
 export type SafetyNetClosureReason =
   | "improved"
   | "review_booked"

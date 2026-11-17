@@ -5,7 +5,8 @@ import { differenceInYears } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { requireActionAccess } from "@/lib/auth";
-import { PATIENT_LANGUAGES, type PatientLanguage } from "@/lib/care-loop/catalogue";
+import { getTest, PATIENT_LANGUAGES, type PatientLanguage } from "@/lib/care-loop/catalogue";
+import { formatClinicDateTime } from "@/lib/care-loop/format";
 import { attempt } from "@/lib/care-loop/result";
 import type { Actor, Db } from "@/lib/care-loop/server";
 import { buildQuestionIds, getProtocol, validSigns } from "@/lib/safety-net/protocols";
@@ -20,6 +21,7 @@ import {
 import {
   MAX_CHECKIN_HOURS,
   MIN_CHECKIN_HOURS,
+  readFollowup,
   richTextToPlain,
   signSuggestion,
   suggestFollowUp,
@@ -28,10 +30,19 @@ import {
   type Suggestion,
   type VisitSummary,
 } from "@/lib/safety-net/suggest";
+import { answerRows, causeRows, levelLabel, skippedQuestions } from "@/lib/safety-net/present";
 import { isSimulatorEnabled } from "@/lib/safety-net/transport";
 import {
   applyCallLog,
+  CALL_DUE_HOURS,
   canScheduleFollowups,
+  checkDecision,
+  initialDifferential,
+  OPENER_ID,
+  routeOfAnswers,
+  type Decision,
+  type FollowupPatch,
+  type OutboundMessage,
   canWorkFollowups,
   checkClosure,
   CLOSURE_REASONS,
@@ -140,6 +151,7 @@ export async function scheduleSafetyNet(input: {
   protocolCode: string;
   checkInHours: number;
   signs: string[];
+  causes?: Array<{ cause: string; level: string }>;
   language: PatientLanguage;
   note?: string | null;
   consentConfirmed: boolean;
@@ -174,6 +186,7 @@ export async function scheduleSafetyNet(input: {
     }
 
     const signs = validSigns(protocol, input.signs);
+    const differential = initialDifferential(protocol, input.causes ?? []);
     const aiSuggestion =
       input.suggestion && verifySuggestion(input.encounterId, input.suggestion.value, input.suggestion.signature)
         ? { model: SUGGEST_MODEL, ...input.suggestion.value }
@@ -190,6 +203,7 @@ export async function scheduleSafetyNet(input: {
         protocol_version: protocol.version,
         signs,
         question_ids: buildQuestionIds(protocol, signs),
+        differential,
         doctor_note: input.note?.trim() || null,
         language: input.language,
         state: "scheduled",
@@ -211,7 +225,9 @@ export async function scheduleSafetyNet(input: {
       aiSuggestion &&
       aiSuggestion.protocolCode === protocol.code &&
       aiSuggestion.checkInHours === hours &&
-      [...aiSuggestion.signs].sort().join() === [...signs].sort().join();
+      [...aiSuggestion.signs].sort().join() === [...signs].sort().join() &&
+      aiSuggestion.causes.map((c) => `${c.cause}:${c.level}`).sort().join() ===
+        differential.map((c) => `${c.cause}:${c.initial}`).sort().join();
     await recordFollowupEvent(db, created, actor, {
       type: "scheduled",
       note: input.note,
@@ -219,6 +235,7 @@ export async function scheduleSafetyNet(input: {
         protocol: protocol.code,
         checkInHours: hours,
         signs,
+        causes: differential.map((c) => ({ cause: c.cause, level: c.initial })),
         language: input.language,
         suggestion: aiSuggestion ? (matchedSuggestion ? "accepted" : "changed") : "none",
       },
@@ -401,5 +418,172 @@ export async function fastForwardFollowup(followupId: string, hours: number) {
     });
     await runTimers(db, (await loadFollowup(db, moved.id)) as FollowupRecord);
     refresh(followup.id);
+  });
+}
+
+// ---- Doctor decisions (spec section 4) and sign-off (section 6) ----
+
+const MINOR_ILLNESS_NOTE = "Minor illness, resolved (patient-reported)";
+const WHATSAPP_WINDOW_HOURS = 24;
+
+export async function decideFollowup(input: {
+  followupId: string;
+  decision: Decision;
+  reviewAt?: string | null;
+  testCode?: string | null;
+  message?: string | null;
+  note?: string | null;
+}) {
+  return attempt(async () => {
+    const { staff, db, actor } = await requireFollowupStaff();
+    const followup = await loadFollowup(db, input.followupId, staff.clinic_id);
+    const check = checkDecision({ role: staff.role, state: followup.state, route: followup.route, decision: input.decision });
+    if (!check.ok) throw new Error(check.error);
+
+    const note = input.note?.trim() || null;
+    const now = new Date();
+    const closeAs = (reason: ClosureReason, closureNote: string): FollowupPatch => ({
+      state: "closed",
+      current_step_due_at: null,
+      closed_at: now.toISOString(),
+      closed_by: staff.id,
+      closure_reason: reason,
+      closure_note: note ? `${closureNote}. ${note}` : closureNote,
+    });
+
+    let patch: FollowupPatch = {};
+    let outbound: OutboundMessage[] = [];
+    const data: Record<string, unknown> = { decision: input.decision };
+
+    switch (input.decision) {
+      case "book_review": {
+        const when = input.reviewAt ? new Date(input.reviewAt) : null;
+        if (!when || Number.isNaN(when.getTime())) throw new Error("Choose the date and time of the review.");
+        if (when.getTime() < now.getTime() - 60 * 60 * 1000) throw new Error("The review time is in the past.");
+        patch = { ...closeAs("review_booked", `Physical review booked for ${formatClinicDateTime(when)}`), review_at: when.toISOString() };
+        data.reviewAt = when.toISOString();
+        break;
+      }
+      case "order_test": {
+        const test = input.testCode ? getTest(input.testCode) : null;
+        if (!test) throw new Error("Choose the test to order.");
+        patch = { ...closeAs("blood_test", `Ordered: ${test.label}`), ordered_test_code: test.code };
+        data.testCode = test.code;
+        break;
+      }
+      case "close_minor":
+      case "approve_closure": {
+        if (input.decision === "close_minor" && (followup.route === "red" || followup.state === "escalated") && !note) {
+          throw new Error("Add a note: this follow-up had a red flag.");
+        }
+        patch = closeAs("improved", MINOR_ILLNESS_NOTE);
+        break;
+      }
+      case "keep_open": {
+        patch = {
+          state: "needs_call",
+          call_reason: "kept_open",
+          current_step_due_at: new Date(now.getTime() + CALL_DUE_HOURS * 60 * 60 * 1000).toISOString(),
+        };
+        break;
+      }
+      case "message_patient": {
+        const text = input.message?.trim() ?? "";
+        if (!text) throw new Error("Write the message to send.");
+        if (text.length > 1000) throw new Error("Keep the message under 1,000 characters.");
+        const { data: lastIn, error } = await db
+          .from("safety_net_messages")
+          .select("created_at")
+          .eq("followup_id", followup.id)
+          .eq("direction", "in")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        const windowOpen =
+          !!lastIn && now.getTime() - new Date(lastIn.created_at).getTime() < WHATSAPP_WINDOW_HOURS * 60 * 60 * 1000;
+        if (!windowOpen) {
+          throw new Error("The patient hasn't replied in the last 24 hours, so WhatsApp won't deliver a free message. Call them instead.");
+        }
+        outbound = [{ kind: "text", body: text }];
+        break;
+      }
+      default:
+        throw new Error("Unknown decision.");
+    }
+
+    const saved = await persistOutcome(
+      db,
+      followup,
+      { patch, outbound, events: [{ type: "decision", note: input.decision === "message_patient" ? input.message : note, data }] },
+      actor
+    );
+    if (!saved) throw new Error("This follow-up just changed. Refresh and try again.");
+
+    await logAuditEvent({
+      clinicId: staff.clinic_id,
+      actorStaffId: staff.id,
+      action: `safety_net.${input.decision}`,
+      targetType: "safety_net_followup",
+      targetId: followup.id,
+      details: data,
+    });
+    refresh(followup.id);
+  });
+}
+
+// ---- Rimbun's read (Claude), staff-triggered only ----
+
+export async function requestRimbunRead(followupId: string) {
+  return attempt(async () => {
+    const { staff, db, actor } = await requireFollowupStaff();
+    const followup = await loadFollowup(db, followupId, staff.clinic_id);
+    const protocol = getProtocol(followup.protocol_code);
+    if (!protocol) throw new Error("Unknown question set.");
+    const answered = Object.keys(followup.answers ?? {}).filter((id) => id !== OPENER_ID);
+    if (answered.length === 0) throw new Error("There are no answers to read yet.");
+
+    const { data: typed, error } = await db
+      .from("safety_net_messages")
+      .select("body")
+      .eq("followup_id", followup.id)
+      .eq("direction", "in")
+      .eq("kind", "text")
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+
+    const rows = answerRows(protocol, followup.answers ?? {}, "en");
+    const complete = Boolean(followup.completed_at);
+    const read = await readFollowup({
+      protocolLabel: protocol.label,
+      route: routeOfAnswers(protocol, followup.answers ?? {}),
+      doctorNote: followup.doctor_note,
+      causes: causeRows(protocol, followup.differential ?? [], followup.question_ids, followup.answers ?? {}, complete).map(
+        (row) => ({
+          label: row.label,
+          started: levelLabel(row.initial).toLowerCase(),
+          now: levelLabel(row.level).toLowerCase(),
+          because: row.tested ? `${row.tested.question} ${row.tested.answer}` : null,
+        })
+      ),
+      answers: rows.map((row) => ({ question: row.asked, answer: row.answer, route: row.route ?? "unknown" })),
+      skipped: complete ? skippedQuestions(protocol, followup.question_ids, followup.answers ?? {}) : [],
+      patientMessages: (typed ?? []).map((message) => message.body),
+    });
+
+    const aiRead = {
+      model: SUGGEST_MODEL,
+      ...read,
+      generatedAt: new Date().toISOString(),
+      answersCount: answered.length,
+    };
+    const { error: saveError } = await db
+      .from("safety_net_followups")
+      .update({ ai_read: aiRead })
+      .eq("id", followup.id);
+    if (saveError) throw new Error(saveError.message);
+    await recordFollowupEvent(db, followup, actor, { type: "ai_read", data: { model: SUGGEST_MODEL } });
+    refresh(followup.id);
+    return aiRead;
   });
 }

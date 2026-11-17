@@ -43,6 +43,9 @@ export function snapshotOf(followup: FollowupRecord): FollowupSnapshot {
     language: followup.language,
     current_step_due_at: followup.current_step_due_at,
     closed_at: followup.closed_at,
+    route: followup.route,
+    differential: followup.differential ?? [],
+    pending_question_id: followup.pending_question_id,
   };
 }
 

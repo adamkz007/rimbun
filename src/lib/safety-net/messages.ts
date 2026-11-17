@@ -70,3 +70,18 @@ export function greenText(language: PatientLanguage) {
 export function freeTextAck(language: PatientLanguage) {
   return COPY.freeText[language];
 }
+
+const CONFIDENCE_ACK = {
+  understood: {
+    en: "Thank you. We're here if anything changes.",
+    ms: "Terima kasih. Kami sedia membantu jika ada perubahan.",
+  },
+  unsure: {
+    en: "Thank you for telling us. A nurse will call you to explain the next step.",
+    ms: "Terima kasih kerana memberitahu kami. Jururawat akan menghubungi anda untuk menerangkan langkah seterusnya.",
+  },
+} as const;
+
+export function confidenceAck(language: PatientLanguage, kind: "understood" | "unsure") {
+  return CONFIDENCE_ACK[kind][language];
+}
