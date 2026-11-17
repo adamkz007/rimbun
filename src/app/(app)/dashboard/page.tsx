@@ -7,7 +7,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
-import { ClipboardPen, Filter, ListOrdered, Repeat2, RotateCcw, Search, Users } from "lucide-react";
+import {
+  ChevronRight,
+  ClipboardPen,
+  Filter,
+  ListOrdered,
+  Repeat2,
+  RotateCcw,
+  Search,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import { CLINIC_TIME_ZONE } from "@/lib/care-loop/format";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import type { Tables } from "@/types/database";
 
@@ -138,66 +150,53 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const totalPages = Math.max(1, Math.ceil(totalPastEncounters / PAST_ENCOUNTERS_PAGE_SIZE));
   const pageLabel = totalPastEncounters === 0 ? 0 : Math.min(page, totalPages);
 
+  const loopOverdue = loopOverdueRes.count ?? 0;
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Good {getGreeting()}, {staff?.full_name?.split(" ")[0]}</h1>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {activeEncounterCardEnabled && (
-          <Link href="/clerking">
-            <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Active Encounters</CardTitle>
-                <ClipboardPen className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{activeEncounters}</p>
-                <p className="text-xs text-muted-foreground">In progress today</p>
-              </CardContent>
-            </Card>
-          </Link>
-        )}
-        <Link href="/patients">
-          <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Patients</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{totalPatients}</p>
-              <p className="text-xs text-muted-foreground">Total registered</p>
-            </CardContent>
-          </Card>
-        </Link>
-        {queueEnabled ? (
-          <Link href="/queue">
-            <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Queue</CardTitle>
-                <ListOrdered className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{waitingQueueCount}</p>
-                <p className="text-xs text-muted-foreground">Waiting now</p>
-              </CardContent>
-            </Card>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-sm text-muted-foreground">{formatClinicToday()}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-[-0.02em] text-leaf-ink sm:text-3xl">
+            Good {getGreeting()}, {greetingName(staff.full_name)}
+          </h1>
+        </div>
+        {loopEnabled && loopOverdue > 0 ? (
+          <Link
+            href="/cases?list=overdue"
+            className="inline-flex items-center gap-2 rounded-full border border-leaf-amber/50 bg-leaf-amber-soft px-3.5 py-1.5 text-sm font-medium text-leaf-amber-ink transition-colors hover:border-leaf-amber"
+          >
+            <span className="size-2 rounded-full bg-leaf-amber" aria-hidden="true" />
+            {loopOverdue} follow-up{loopOverdue === 1 ? "" : "s"} overdue
           </Link>
         ) : null}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {activeEncounterCardEnabled ? (
+          <StatTile
+            href="/clerking"
+            label="Active encounters"
+            value={activeEncounters}
+            hint="In progress today"
+            icon={ClipboardPen}
+            tone="leaf"
+          />
+        ) : null}
+        <StatTile href="/patients" label="Patients" value={totalPatients} hint="Total registered" icon={Users} tone="ink" />
+        {queueEnabled ? (
+          <StatTile href="/queue" label="Queue" value={waitingQueueCount} hint="Waiting now" icon={ListOrdered} tone="sage" />
+        ) : null}
         {loopEnabled ? (
-          <Link href={(loopOverdueRes.count ?? 0) > 0 ? "/cases?list=overdue" : "/cases"}>
-            <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Result follow-ups</CardTitle>
-                <Repeat2 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{loopOpenRes.count ?? 0}</p>
-                <p className={(loopOverdueRes.count ?? 0) > 0 ? "text-xs font-medium text-destructive" : "text-xs text-muted-foreground"}>
-                  {(loopOverdueRes.count ?? 0) > 0 ? `${loopOverdueRes.count} overdue` : "Open, none overdue"}
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
+          <StatTile
+            href={loopOverdue > 0 ? "/cases?list=overdue" : "/cases"}
+            label="Result follow-ups"
+            value={loopOpenRes.count ?? 0}
+            hint={loopOverdue > 0 ? `${loopOverdue} overdue` : "Open, none overdue"}
+            icon={Repeat2}
+            tone="amber"
+            alert={loopOverdue > 0}
+          />
         ) : null}
       </div>
 
@@ -304,41 +303,46 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-1.5">
+              <ul className="divide-y overflow-hidden rounded-xl border bg-card">
                 {pastEncounters.map((encounter) => {
                   const patient = getFirstRelation(encounter.patients);
                   const doctor = getFirstRelation(encounter.staff);
                   const doctorName = doctor?.full_name ?? "Unknown doctor";
+                  const patientName = patient?.full_name ?? "Unknown patient";
 
                   return (
-                    <Link key={encounter.id} href={`/clerking/${encounter.id}`}>
-                      <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-                        <CardContent className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0 space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="truncate text-sm font-medium">
-                                {patient?.full_name ?? "Unknown patient"}
-                              </p>
-                              <Badge variant={encounter.status === "completed" ? "secondary" : "outline"}>
-                                {formatEncounterStatus(encounter.status)}
-                              </Badge>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                              <span>MRN {patient?.mrn ?? "N/A"}</span>
-                              <span>Doctor {doctorName}</span>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                              <span>{format(new Date(encounter.encounter_date), "dd MMM yyyy")}</span>
-                              <span>Logged {format(new Date(encounter.created_at), "dd MMM yyyy, h:mm a")}</span>
-                            </div>
-                          </div>
-                          <span className="hidden shrink-0 text-xs font-medium text-primary sm:inline">Open encounter</span>
-                        </CardContent>
-                      </Card>
-                    </Link>
+                    <li key={encounter.id}>
+                      <Link
+                        href={`/clerking/${encounter.id}`}
+                        className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-leaf-mist"
+                      >
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-leaf-sage/45 text-xs font-semibold text-leaf-ink">
+                          {initialsOf(patientName)}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-leaf-text">{patientName}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            MRN {patient?.mrn ?? "N/A"} · {doctorName} ·{" "}
+                            {format(new Date(encounter.encounter_date), "dd MMM yyyy")}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium",
+                            ENCOUNTER_STATUS_STYLES[encounter.status]
+                          )}
+                        >
+                          {formatEncounterStatus(encounter.status)}
+                        </span>
+                        <ChevronRight
+                          className="hidden size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 sm:block"
+                          aria-hidden="true"
+                        />
+                      </Link>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             )}
 
             {totalPages > 1 ? (
@@ -387,8 +391,88 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   );
 }
 
+const ENCOUNTER_STATUS_STYLES: Record<Tables<"encounters">["status"], string> = {
+  in_progress: "bg-leaf text-white",
+  completed: "bg-leaf-mist text-leaf-ink",
+  amended: "bg-leaf-amber-soft text-leaf-amber-ink",
+};
+
+const TILE_TONES = {
+  ink: "bg-leaf-ink text-leaf-paper",
+  leaf: "bg-leaf text-white",
+  sage: "bg-leaf-sage/55 text-leaf-ink",
+  amber: "bg-leaf-amber-soft text-leaf-amber-ink",
+} as const;
+
+function StatTile({
+  href,
+  label,
+  value,
+  hint,
+  icon: Icon,
+  tone,
+  alert,
+}: {
+  href: string;
+  label: string;
+  value: number;
+  hint: string;
+  icon: LucideIcon;
+  tone: keyof typeof TILE_TONES;
+  alert?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex items-center gap-4 rounded-xl border bg-card p-4 transition-[border-color,box-shadow] hover:border-leaf-sage hover:shadow-[0_8px_24px_-12px] hover:shadow-leaf-ink/25"
+    >
+      <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", TILE_TONES[tone])}>
+        <Icon className="size-5" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-2xl leading-tight font-semibold text-leaf-text tabular-nums">{value}</p>
+        <p className={cn("truncate text-xs", alert ? "font-medium text-leaf-amber-ink" : "text-muted-foreground")}>
+          {hint}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+const HONORIFICS = /^(dr|prof|mr|mrs|ms|dato'?|datin|tan sri|puan|encik)\.?$/i;
+
+/** "Dr. Hakim Rahman" → "Dr. Hakim"; "Siti Nur" → "Siti". */
+function greetingName(fullName: string | null | undefined) {
+  const parts = (fullName ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "there";
+  return HONORIFICS.test(parts[0]) && parts[1] ? `${parts[0]} ${parts[1]}` : parts[0];
+}
+
+function initialsOf(name: string) {
+  return name
+    .split(/\s+/)
+    .filter((part) => /^[A-Za-z]/.test(part) && !/^(bin|binti|a\/l|a\/p)$/i.test(part))
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function formatClinicToday() {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: CLINIC_TIME_ZONE,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date());
+}
+
 function getGreeting() {
-  const hour = new Date().getHours();
+  // The clinic's local hour, not the server's (servers run in UTC).
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", { timeZone: CLINIC_TIME_ZONE, hour: "numeric", hour12: false }).format(new Date())
+  );
   if (hour < 12) return "morning";
   if (hour < 17) return "afternoon";
   return "evening";

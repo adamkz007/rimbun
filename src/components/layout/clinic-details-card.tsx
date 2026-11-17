@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { updateClinicDetails } from "@/lib/actions/clinic-actions";
+import { cn } from "@/lib/utils";
 import type { StaffRole } from "@/types/database";
 
 type ClinicDetails = {
@@ -33,6 +34,8 @@ type ClinicDetails = {
 type ClinicDetailsCardProps = {
   clinic: ClinicDetails | null;
   role: StaffRole;
+  /** "dark" for the navigation rail's ink background. */
+  tone?: "light" | "dark";
 };
 
 type ClinicDetailsForm = {
@@ -41,7 +44,7 @@ type ClinicDetailsForm = {
   address: string;
 };
 
-export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
+export function ClinicDetailsCard({ clinic, role, tone = "light" }: ClinicDetailsCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -50,6 +53,7 @@ export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
   const initialForm = useMemo(() => getInitialForm(clinic), [clinicSnapshot]);
   const [form, setForm] = useState<ClinicDetailsForm>(initialForm);
   const canEdit = role === "admin";
+  const dark = tone === "dark";
 
   useEffect(() => {
     if (!isDialogOpen) {
@@ -82,11 +86,17 @@ export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
   }
 
   return (
-    <div className="mt-auto px-2 py-3">
-      <Card size="sm" className="gap-3 bg-muted/30 ring-foreground/10">
+    <div className={cn("mt-auto py-3", dark ? "px-3" : "px-2")}>
+      <Card
+        size="sm"
+        className={cn(
+          "gap-3",
+          dark ? "bg-white/6 text-leaf-on-ink ring-white/10" : "bg-muted/30 ring-foreground/10"
+        )}
+      >
         <CardHeader className="gap-2">
           <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-sm">{clinic.name}</CardTitle>
+            <CardTitle className={cn("text-sm", dark && "text-leaf-paper")}>{clinic.name}</CardTitle>
           </div>
           {canEdit ? (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -95,7 +105,10 @@ export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 justify-start px-2 text-xs text-muted-foreground"
+                    className={cn(
+                      "h-7 justify-start px-2 text-xs",
+                      dark ? "text-leaf-on-ink/70 hover:bg-white/8 hover:text-leaf-paper" : "text-muted-foreground"
+                    )}
                   />
                 }
               >
@@ -166,16 +179,16 @@ export function ClinicDetailsCard({ clinic, role }: ClinicDetailsCardProps) {
         </CardHeader>
 
         <CardContent className="space-y-3 text-xs">
-          <div className="flex items-start gap-2 text-muted-foreground">
+          <div className={cn("flex items-start gap-2", dark ? "text-leaf-on-ink/60" : "text-muted-foreground")}>
             <Building2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span className="text-foreground">
+            <span className={dark ? "text-leaf-on-ink" : "text-foreground"}>
               {clinic.registration_number?.trim() || "SSM number not set"}
             </span>
           </div>
 
-          <div className="flex items-start gap-2 text-muted-foreground">
+          <div className={cn("flex items-start gap-2", dark ? "text-leaf-on-ink/60" : "text-muted-foreground")}>
             <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span className="whitespace-pre-line text-foreground">
+            <span className={cn("whitespace-pre-line", dark ? "text-leaf-on-ink" : "text-foreground")}>
               {clinic.address?.trim() || "Address not set"}
             </span>
           </div>
