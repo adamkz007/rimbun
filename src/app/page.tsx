@@ -1,17 +1,19 @@
 import Link from "next/link";
 import {
+  AlarmClock,
   ArrowRight,
   ClipboardPenLine,
-  FileStack,
-  HandHelping,
-  HeartHandshake,
-  MousePointerClick,
+  FileCheck2,
+  MessageCircleHeart,
   ShieldCheck,
   Sparkles,
+  Stethoscope,
   type LucideIcon,
 } from "lucide-react";
 import { RimbunLogo, RimbunMark } from "@/components/branding/rimbun-logo";
+import { CaseLoopPreview } from "@/components/landing/case-loop-preview";
 import { EncounterPreview } from "@/components/landing/encounter-preview";
+import { PatientPhonePreview } from "@/components/landing/patient-phone-preview";
 import { cn } from "@/lib/utils";
 
 const DEMO_HREF =
@@ -27,6 +29,7 @@ const ctaSecondary = cn(
 );
 
 const navLinks = [
+  { href: "#care-loop", label: "Care Loop" },
   { href: "#features", label: "Features" },
   { href: "#outcomes", label: "Why clinics switch" },
   { href: "/diagnose", label: "Pain checker" },
@@ -57,14 +60,43 @@ const featureCards: Array<{
   },
 ];
 
+// How Care Loop works, in the order a case moves.
+const loopSteps: Array<{ title: string; description: string }> = [
+  {
+    title: "Result logged",
+    description:
+      "Lab and screening results land in one inbox. Default rules flag what needs action; a doctor confirms every flag.",
+  },
+  {
+    title: "Owner and deadline",
+    description:
+      "Each case gets one accountable owner and a due date for its next step. Overdue cases escalate to a doctor, then the clinic admin.",
+  },
+  {
+    title: "Patient confirms",
+    description:
+      "A WhatsApp or SMS link explains the result in English or Bahasa Melayu. The patient confirms they understand, or asks for a call.",
+  },
+  {
+    title: "Specialist replies",
+    description:
+      "Referral letters draft themselves from the consult. Specialists accept, decline or send the outcome back by link, no login needed.",
+  },
+  {
+    title: "Closed with evidence",
+    description:
+      "A case only closes when care is documented, or a doctor signs off with a reason. Every step stays on the record.",
+  },
+];
+
 const outcomes: Array<{
   title: string;
   icon: LucideIcon;
 }> = [
-  { title: "Less clicking during consults", icon: MousePointerClick },
-  { title: "Smoother handoff between team members", icon: HandHelping },
-  { title: "Clearer records across repeat visits", icon: FileStack },
-  { title: "A calmer day for staff and patients", icon: HeartHandshake },
+  { title: "No actionable result left untracked", icon: FileCheck2 },
+  { title: "Overdue follow-ups escalate on their own", icon: AlarmClock },
+  { title: "Patients confirm they understood the next step", icon: MessageCircleHeart },
+  { title: "Referrals that come back with an outcome", icon: Stethoscope },
 ];
 
 function GlassNav() {
@@ -126,12 +158,12 @@ export default function Home() {
                 <span className="size-1.5 rounded-full bg-leaf" aria-hidden="true" />
                 Private beta for GP clinics
               </p>
-              <h1 className="mt-6 text-[2.75rem] leading-[1.02] font-semibold tracking-[-0.04em] text-balance text-leaf-ink [overflow-wrap:anywhere] sm:text-6xl lg:text-[4.25rem]">
-                Clinic software that stays out of the way.
+              <h1 className="mt-6 text-[2.75rem] leading-[1.02] font-semibold tracking-[-0.04em] text-balance text-leaf-ink [overflow-wrap:anywhere] sm:text-6xl lg:text-[3.5rem]">
+                Every abnormal result has an owner, a next step and an ending.
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-[1.65] text-leaf-muted">
-                Rimbun helps doctors write notes, prescribe, and follow up in one place,
-                keeping clinic operations smooth.
+                Rimbun runs your consultations, then makes sure every result that needs action
+                reaches the patient, the specialist and documented care.
               </p>
               <div className="mt-9 flex flex-wrap items-center gap-3">
                 <Link href={DEMO_HREF} className={ctaPrimary}>
@@ -144,24 +176,66 @@ export default function Home() {
               </div>
             </div>
 
-            <EncounterPreview />
+            <CaseLoopPreview />
+          </div>
+        </section>
+
+        {/* Care Loop */}
+        <section id="care-loop" className="scroll-mt-28 border-t border-leaf-rule bg-white">
+          <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-8 lg:py-28">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end">
+              <h2 className="text-4xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance text-leaf-ink sm:text-5xl">
+                Care Loop closes the gap after the consult.
+              </h2>
+              <p className="max-w-lg text-lg leading-[1.65] text-leaf-muted">
+                Results get lost between the lab, the clinic, the specialist and the patient.
+                Care Loop tracks each one from the moment it arrives until care is done.
+              </p>
+            </div>
+
+            <div className="mt-14 grid gap-14 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:items-center lg:gap-16">
+              <ol className="border-t border-leaf-rule">
+                {loopSteps.map((step, index) => (
+                  <li key={step.title} className="flex gap-5 border-b border-leaf-rule py-5">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-leaf-ink text-sm font-semibold text-leaf-paper tabular-nums">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-semibold tracking-[-0.015em] text-leaf-ink">{step.title}</h3>
+                      <p className="mt-1 text-[0.9375rem] leading-[1.7] text-leaf-muted">{step.description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+
+              <div>
+                <PatientPhonePreview />
+                <p className="mt-6 text-center text-base leading-[1.6] font-medium text-leaf-ink text-balance">
+                  Patients always know what their result means and what happens next.
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
         {/* Features */}
-        <section id="features" className="scroll-mt-28 border-t border-leaf-rule bg-white">
+        <section id="features" className="scroll-mt-28 border-t border-leaf-rule bg-leaf-paper">
           <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-8 lg:py-28">
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end">
               <h2 className="text-4xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance text-leaf-ink sm:text-5xl">
-                Fits right in your clinic workflow.
+                And a consultation workspace that stays out of the way.
               </h2>
               <p className="max-w-lg text-lg leading-[1.65] text-leaf-muted">
-                Good clinic software should help quietly. Rimbun keeps the important
-                structure in place, without making the consultation feel heavy or rigid.
+                Notes, diagnoses and prescriptions feed straight into follow-up, so the loop
+                starts in the same place the consult does.
               </p>
             </div>
 
-            <div className="mt-14 grid gap-10 sm:grid-cols-3 sm:gap-8">
+            <div className="mt-14 flex justify-center">
+              <EncounterPreview />
+            </div>
+
+            <div className="mt-20 grid gap-10 sm:grid-cols-3 sm:gap-8">
               {featureCards.map((feature) => {
                 const Icon = feature.icon;
                 return (
@@ -185,11 +259,18 @@ export default function Home() {
           <div className="mx-auto grid w-full max-w-6xl gap-12 px-4 py-20 sm:px-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20 lg:py-28">
             <div className="min-w-0">
               <h2 className="text-4xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance sm:text-5xl">
-                Less friction for the team. More attention for the patient.
+                Fewer results lost. More patients reaching care.
               </h2>
               <p className="mt-6 max-w-md text-lg leading-[1.65] text-leaf-on-ink">
-                Rimbun works best in busy clinics where good notes, steady workflow, and
-                continuity really matter.
+                Rimbun measures what matters: days from result to care, referrals completed,
+                and how many patients understood their next step.
+              </p>
+              <p className="mt-8 flex max-w-md items-start gap-3 border-t border-white/15 pt-6 text-[0.9375rem] leading-[1.65] text-leaf-on-ink">
+                <ShieldCheck className="mt-0.5 size-5 shrink-0 text-leaf-sage" aria-hidden="true" />
+                <span>
+                  Human-governed by design. Doctors confirm every flag and sign off every closure
+                  without evidence. Nothing closes on its own.
+                </span>
               </p>
             </div>
 
@@ -218,11 +299,11 @@ export default function Home() {
         <section className="mx-auto w-full max-w-6xl px-4 py-20 text-center sm:px-8 lg:py-28">
           <RimbunMark className="mx-auto size-14" />
           <h2 className="mx-auto mt-8 max-w-2xl text-4xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance text-leaf-ink sm:text-5xl">
-            Give your clinic a simpler, calmer way to work.
+            See how Rimbun closes the loop.
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-lg leading-[1.65] text-leaf-muted">
-            Start with the part your team uses most: a clerking workspace that feels
-            clear, fast, and easy to return to every day.
+            We&apos;ll walk you through a real case, from a flagged result to a patient who
+            knows what to do next and a specialist outcome on file.
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link href={DEMO_HREF} className={ctaPrimary}>
@@ -251,6 +332,7 @@ export default function Home() {
             <RimbunLogo className="text-xl" />
           </Link>
           <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-leaf-muted">
+            <li><Link href="#care-loop" className="whitespace-nowrap hover:text-leaf-ink">Care Loop</Link></li>
             <li><Link href="#features" className="whitespace-nowrap hover:text-leaf-ink">Features</Link></li>
             <li><Link href="/diagnose" className="whitespace-nowrap hover:text-leaf-ink">Pain checker</Link></li>
             <li><Link href="/login" className="whitespace-nowrap hover:text-leaf-ink">Sign in</Link></li>
