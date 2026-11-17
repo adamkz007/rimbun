@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { login } from "@/lib/actions/auth-actions";
+import { ChevronDown } from "lucide-react";
 import { RimbunMark } from "@/components/branding/rimbun-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ export default function LoginPage() {
   const [pending, setPending] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+  const [showDemo, setShowDemo] = useState(false);
 
   function fillDemoAccount(email: string) {
     if (emailRef.current) emailRef.current.value = email;
@@ -69,29 +71,45 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 rounded-lg border border-dashed border-leaf-sage bg-leaf-mist/60 p-3 text-xs">
-            <p className="font-medium text-leaf-ink">For Hack2Skill evaluators</p>
-            <p className="mt-0.5 text-muted-foreground">
-              Sign in to the demo clinic with any account below. Password:{" "}
-              <code className="rounded bg-card px-1 py-0.5 font-mono text-leaf-ink">{DEMO_PASSWORD}</code>
-            </p>
-            <ul className="mt-2 space-y-1">
-              {DEMO_ACCOUNTS.map((account) => (
-                <li key={account.email} className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate">
-                    <span className="font-medium text-leaf-ink">{account.role}</span>{" "}
-                    <span className="text-muted-foreground">{account.email}</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => fillDemoAccount(account.email)}
-                    className="shrink-0 rounded-md px-2 py-0.5 font-medium text-leaf hover:bg-card"
-                  >
-                    Use
-                  </button>
-                </li>
-              ))}
-            </ul>
+          <div className="mt-6 rounded-lg border border-dashed border-leaf-sage bg-leaf-mist/60 text-xs">
+            <button
+              type="button"
+              onClick={() => setShowDemo((value) => !value)}
+              aria-expanded={showDemo}
+              aria-controls="demo-access"
+              className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left font-medium text-leaf-ink hover:bg-leaf-mist"
+            >
+              For Hack2Skill evaluators: demo access
+              <ChevronDown
+                className={`size-4 shrink-0 transition-transform ${showDemo ? "rotate-180" : ""}`}
+                aria-hidden="true"
+              />
+            </button>
+            {showDemo ? (
+              <div id="demo-access" className="px-3 pb-3">
+              <p className="text-muted-foreground">
+                Sign in to the demo clinic with any account below. Password:{" "}
+                <code className="rounded bg-card px-1 py-0.5 font-mono text-leaf-ink">{DEMO_PASSWORD}</code>
+              </p>
+              <ul className="mt-2 space-y-1">
+                {DEMO_ACCOUNTS.map((account) => (
+                  <li key={account.email} className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate">
+                      <span className="font-medium text-leaf-ink">{account.role}</span>{" "}
+                      <span className="text-muted-foreground">{account.email}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => fillDemoAccount(account.email)}
+                      className="shrink-0 rounded-md px-2 py-0.5 font-medium text-leaf hover:bg-card"
+                    >
+                      Use
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              </div>
+            ) : null}
           </div>
         </CardContent>
       </Card>
