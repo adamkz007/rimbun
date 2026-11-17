@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { login } from "@/lib/actions/auth-actions";
 import { RimbunMark } from "@/components/branding/rimbun-logo";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+// Demo accounts in the seeded "Rimbun Demo Clinic", shown for hackathon judges.
+// Admin is left out on purpose: it can manage staff accounts.
+const DEMO_PASSWORD = "Rimbun123!";
+const DEMO_ACCOUNTS = [
+  { role: "Doctor", email: "doctor@demo.rimbun.local" },
+  { role: "Nurse", email: "nurse@demo.rimbun.local" },
+  { role: "Reception", email: "reception@demo.rimbun.local" },
+];
+
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  function fillDemoAccount(email: string) {
+    if (emailRef.current) emailRef.current.value = email;
+    if (passwordRef.current) passwordRef.current.value = DEMO_PASSWORD;
+    passwordRef.current?.focus();
+  }
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
@@ -38,11 +55,11 @@ export default function LoginPage() {
           <form action={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" required autoFocus />
+              <Input ref={emailRef} id="email" name="email" type="email" required autoFocus />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" required />
+              <Input ref={passwordRef} id="password" name="password" type="password" required />
             </div>
             {error && (
               <p className="text-sm text-destructive">{error}</p>
@@ -51,6 +68,31 @@ export default function LoginPage() {
               {pending ? "Signing in..." : "Sign in"}
             </Button>
           </form>
+
+          <div className="mt-6 rounded-lg border border-dashed border-leaf-sage bg-leaf-mist/60 p-3 text-xs">
+            <p className="font-medium text-leaf-ink">For Hack2Skill evaluators</p>
+            <p className="mt-0.5 text-muted-foreground">
+              Sign in to the demo clinic with any account below. Password:{" "}
+              <code className="rounded bg-card px-1 py-0.5 font-mono text-leaf-ink">{DEMO_PASSWORD}</code>
+            </p>
+            <ul className="mt-2 space-y-1">
+              {DEMO_ACCOUNTS.map((account) => (
+                <li key={account.email} className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 truncate">
+                    <span className="font-medium text-leaf-ink">{account.role}</span>{" "}
+                    <span className="text-muted-foreground">{account.email}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => fillDemoAccount(account.email)}
+                    className="shrink-0 rounded-md px-2 py-0.5 font-medium text-leaf hover:bg-card"
+                  >
+                    Use
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         </CardContent>
       </Card>
     </div>
