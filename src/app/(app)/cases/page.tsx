@@ -21,6 +21,7 @@ import {
   type ClosureReason,
   type Worklist,
 } from "@/lib/care-loop/workflow";
+import { getProtocol } from "@/lib/safety-net/protocols";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +52,15 @@ type CaseRow = {
   result: Relation<{ value_numeric: number | null; value_text: string | null; reported_at: string }>;
 };
 
+type FollowupCandidateRow = {
+  id: string;
+  patient_id: string;
+  protocol_code: string;
+  closure_reason: string | null;
+  ordered_test_code: string | null;
+  closed_at: string | null;
+};
+
 function first<T>(value: Relation<T> | undefined) {
   return Array.isArray(value) ? value[0] ?? null : value ?? null;
 }
@@ -65,7 +75,8 @@ export default async function CasesPage({ searchParams }: CasesPageProps) {
   const now = new Date();
   const closedSince = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [casesRes, triageRes, staffRes, referralsRes] = await Promise.all([
+  const followupSince = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const [casesRes, triageRes, staffRes, referralsRes, followupsRes] = await Promise.all([
     supabase
       .from("result_cases")
       .select(
@@ -90,15 +101,41 @@ export default async function CasesPage({ searchParams }: CasesPageProps) {
       .eq("is_active", true)
       .order("full_name"),
     supabase.from("referrals").select("status").eq("clinic_id", staff.clinic_id),
+    supabase
+      .from("safety_net_followups")
+      .select("id, patient_id, protocol_code, closure_reason, ordered_test_code, closed_at")
+      .eq("clinic_id", staff.clinic_id)
+      .eq("state", "closed")
+      .in("closure_reason", ["blood_test", "review_booked"])
+      .gte("closed_at", followupSince)
+      .order("closed_at", { ascending: false }),
   ]);
 
-  for (const res of [casesRes, triageRes, staffRes, referralsRes]) {
+  for (const res of [casesRes, triageRes, staffRes, referralsRes, followupsRes]) {
     if (res.error) throw new Error(res.error.message);
   }
 
   const cases = (casesRes.data ?? []) as CaseRow[];
   const triage = ((triageRes.data ?? []) as Array<Omit<TriageResult, "patient"> & { patient: Relation<TriageResult["patient"]> }>)
-    .map((row) => ({ ...row, patient: first(row.patient) }))
+    .map((row) => {
+      const patient = first(row.patient);
+      // A follow-up closed for this test (or for a review) may be what this result continues.
+      const candidates = ((followupsRes.data ?? []) as FollowupCandidateRow[]).filter((f) => f.patient_id === patient?.id);
+      const candidate =
+        candidates.find((f) => f.ordered_test_code === row.test_code) ?? candidates.find((f) => f.closure_reason === "review_booked") ?? null;
+      return {
+        ...row,
+        patient,
+        followupCandidate: candidate
+          ? {
+              id: candidate.id,
+              label: getProtocol(candidate.protocol_code)?.label ?? candidate.protocol_code,
+              detail: `${candidate.ordered_test_code ? `Ordered ${getTest(candidate.ordered_test_code)?.label ?? candidate.ordered_test_code}` : "Physical review booked"} · closed ${formatClinicDate(candidate.closed_at!)}`,
+              match: candidate.ordered_test_code === row.test_code,
+            }
+          : null,
+      };
+    })
     .sort((left, right) => {
       if (!left.suggested_urgency || !right.suggested_urgency) {
         return left.suggested_urgency ? -1 : right.suggested_urgency ? 1 : 0;

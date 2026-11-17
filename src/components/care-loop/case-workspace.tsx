@@ -146,6 +146,13 @@ export type CaseWorkspaceData = {
   staff: Array<{ id: string; full_name: string; role: string }>;
   referralDraft: string;
   referralSpecialty: string;
+  /** The safety-net follow-up this case continues, if any. */
+  followup?: {
+    id: string;
+    label: string;
+    steps: Array<{ key: string; label: string; at: string | null }>;
+    events: Array<{ id: string; label: string; at: string; actor: string; note: string | null }>;
+  } | null;
 };
 
 const EVENT_LABELS: Record<string, string> = {
@@ -230,7 +237,7 @@ export function CaseWorkspace({ data, staffRole }: { data: CaseWorkspaceData; st
         </div>
       </div>
 
-      <Stepper state={item.state} events={data.events} />
+      <Stepper state={item.state} events={data.events} followup={data.followup ?? null} />
 
       {needsDoctorDecision({ state: item.state, contactAttempts: item.contact_attempts }) ? (
         <Card className="border-destructive/40">
@@ -292,7 +299,7 @@ export function CaseWorkspace({ data, staffRole }: { data: CaseWorkspaceData; st
             </CardContent>
           </Card>
 
-          <Timeline events={data.events} />
+          <Timeline events={data.events} followup={data.followup ?? null} />
         </div>
 
         <div className="space-y-4">
@@ -318,11 +325,29 @@ type ActionProps = {
 };
 
 /** Steps the case actually passed through are ticked; steps it jumped over are shown as skipped. */
-function Stepper({ state, events }: { state: CaseState; events: CaseWorkspaceData["events"] }) {
+function Stepper({
+  state,
+  events,
+  followup,
+}: {
+  state: CaseState;
+  events: CaseWorkspaceData["events"];
+  followup: CaseWorkspaceData["followup"];
+}) {
   const current = stateIndex(state);
   const reached = new Set<string>(["triaged", ...events.map((event) => event.to_state).filter((value): value is string => !!value)]);
   return (
     <ol className="flex flex-wrap gap-1.5" aria-label="Case progress">
+      {followup?.steps.map((step) => (
+        <li
+          key={step.key}
+          className="flex items-center gap-1 rounded-full border border-amber-400 px-2.5 py-1 text-xs text-amber-900 dark:text-amber-200"
+          title={step.at ? `From the safety-net follow-up · ${formatClinicDateTime(step.at)}` : "From the safety-net follow-up"}
+        >
+          {step.at ? <Check className="h-3 w-3" /> : null}
+          {step.label}
+        </li>
+      ))}
       {CASE_STATES.map((step, index) => {
         const done = index < current && reached.has(step);
         const skipped = index < current && !reached.has(step);
@@ -348,15 +373,37 @@ function Stepper({ state, events }: { state: CaseState; events: CaseWorkspaceDat
   );
 }
 
-function Timeline({ events }: { events: CaseWorkspaceData["events"] }) {
+function Timeline({ events, followup }: { events: CaseWorkspaceData["events"]; followup: CaseWorkspaceData["followup"] }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-sm">Timeline</CardTitle>
-        <CardDescription>Every change to this case, oldest first.</CardDescription>
+        <CardDescription>
+          {followup ? (
+            <>
+              From the visit to closure, oldest first. The amber steps come from the{" "}
+              <Link href={`/followups/${followup.id}`} className="underline underline-offset-2">
+                safety-net follow-up ({followup.label})
+              </Link>
+              .
+            </>
+          ) : (
+            "Every change to this case, oldest first."
+          )}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ol className="space-y-4 border-l pl-4">
+          {followup?.events.map((event) => (
+            <li key={event.id} className="relative">
+              <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-amber-500 bg-background" />
+              <p className="text-sm font-medium">{event.label}</p>
+              <p className="text-xs text-muted-foreground">
+                {event.actor} · {formatClinicDateTime(event.at)}
+              </p>
+              {event.note ? <p className="mt-1 whitespace-pre-wrap text-sm">{event.note}</p> : null}
+            </li>
+          ))}
           {events.map((event) => (
             <li key={event.id} className="relative">
               <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-primary" />

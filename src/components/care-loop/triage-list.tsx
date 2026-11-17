@@ -35,6 +35,8 @@ export type TriageResult = {
   unmatched_name: string | null;
   unmatched_identifier: string | null;
   patient: PickedPatient | null;
+  /** A recent safety-net follow-up this result may continue. */
+  followupCandidate?: { id: string; label: string; detail: string; match: boolean } | null;
 };
 
 export type StaffOption = { id: string; full_name: string; role: string };
@@ -60,6 +62,7 @@ export function TriageList({
   const [nextStep, setNextStep] = useState<NextStep>("clinic_review");
   const [ownerId, setOwnerId] = useState(currentStaffId);
   const [note, setNote] = useState("");
+  const [linkFollowup, setLinkFollowup] = useState(false);
   const [matchPatient, setMatchPatient] = useState<PickedPatient | null>(null);
 
   function run(action: () => Promise<ActionResult<unknown>>, success: string, after?: () => void) {
@@ -81,6 +84,7 @@ export function TriageList({
     setNextStep(test?.nextStep ?? "clinic_review");
     setOwnerId(currentStaffId);
     setNote("");
+    setLinkFollowup(result.followupCandidate?.match ?? false);
     setOpenFor(result);
   }
 
@@ -221,6 +225,23 @@ export function TriageList({
                   onChange={(event) => setNote(event.target.value)}
                 />
               </div>
+              {openFor.followupCandidate ? (
+                <label className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 size-4"
+                    checked={linkFollowup}
+                    onChange={(event) => setLinkFollowup(event.target.checked)}
+                  />
+                  <span>
+                    Continues safety-net follow-up: <span className="font-medium">{openFor.followupCandidate.label}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {openFor.followupCandidate.detail}
+                      {openFor.followupCandidate.match ? "" : " · different test: check before linking"}
+                    </span>
+                  </span>
+                </label>
+              ) : null}
               <Button
                 disabled={isPending}
                 onClick={() =>
@@ -232,6 +253,7 @@ export function TriageList({
                         nextStep,
                         nextStepNote: note,
                         ownerStaffId: ownerId,
+                        followupId: linkFollowup ? openFor.followupCandidate?.id ?? null : null,
                       }));
                       toast.success("Case opened");
                       // Navigate without a refresh: a refresh here would cancel the push.

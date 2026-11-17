@@ -229,6 +229,8 @@ export async function openCase(input: {
   nextStep: NextStep;
   nextStepNote?: string | null;
   ownerStaffId: string;
+  /** The safety-net follow-up this result continues (spec section 7). */
+  followupId?: string | null;
 }) {
   return attempt(async () => {
     const { staff, db, actor } = await requireLoopStaff();
@@ -239,6 +241,21 @@ export async function openCase(input: {
     const result = await loadPendingResult(db, staff.clinic_id, input.resultId);
     if (!result.patient_id) throw new Error("Match this result to a patient before opening a case.");
     await assertActiveStaff(db, staff.clinic_id, input.ownerStaffId);
+
+    let followupId: string | null = null;
+    if (input.followupId) {
+      const { data: followup, error: followupError } = await db
+        .from("safety_net_followups")
+        .select("id, patient_id, state")
+        .eq("id", input.followupId)
+        .eq("clinic_id", staff.clinic_id)
+        .maybeSingle();
+      if (followupError) throw new Error(followupError.message);
+      if (!followup || followup.patient_id !== result.patient_id || followup.state !== "closed") {
+        throw new Error("That follow-up can't be linked to this result.");
+      }
+      followupId = followup.id;
+    }
 
     const now = new Date().toISOString();
     const { data: created, error } = await db
@@ -257,6 +274,7 @@ export async function openCase(input: {
         opened_at: now,
         state_entered_at: now,
         current_step_due_at: computeDueAt("triaged", input.urgency, now)?.toISOString() ?? null,
+        followup_id: followupId,
       })
       .select("*")
       .single();
@@ -277,6 +295,7 @@ export async function openCase(input: {
         suggestedUrgency: result.suggested_urgency,
         nextStep: input.nextStep,
         ownerStaffId: input.ownerStaffId,
+        followupId,
       },
     });
 
