@@ -47,6 +47,8 @@ docs/
 *.txt
 *.rst
 *.adoc
+# ...except plans, which are tracked
+!plan/*.md
 
 # Local Netlify folder
 .netlify
