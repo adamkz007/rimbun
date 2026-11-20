@@ -229,6 +229,8 @@ export async function openCase(input: {
   nextStep: NextStep;
   nextStepNote?: string | null;
   ownerStaffId: string;
+  /** The safety-net follow-up this result continues (spec section 7). */
+  followupId?: string | null;
 }) {
   return attempt(async () => {
     const { staff, db, actor } = await requireLoopStaff();
@@ -239,6 +241,21 @@ export async function openCase(input: {
     const result = await loadPendingResult(db, staff.clinic_id, input.resultId);
     if (!result.patient_id) throw new Error("Match this result to a patient before opening a case.");
     await assertActiveStaff(db, staff.clinic_id, input.ownerStaffId);
+
+    let followupId: string | null = null;
+    if (input.followupId) {
+      const { data: followup, error: followupError } = await db
+        .from("safety_net_followups")
+        .select("id, patient_id, state")
+        .eq("id", input.followupId)
+        .eq("clinic_id", staff.clinic_id)
+        .maybeSingle();
+      if (followupError) throw new Error(followupError.message);
+      if (!followup || followup.patient_id !== result.patient_id || followup.state !== "closed") {
+        throw new Error("That follow-up can't be linked to this result.");
+      }
+      followupId = followup.id;
+    }
 
     const now = new Date().toISOString();
     const { data: created, error } = await db
@@ -257,6 +274,7 @@ export async function openCase(input: {
         opened_at: now,
         state_entered_at: now,
         current_step_due_at: computeDueAt("triaged", input.urgency, now)?.toISOString() ?? null,
+        followup_id: followupId,
       })
       .select("*")
       .single();
@@ -277,6 +295,7 @@ export async function openCase(input: {
         suggestedUrgency: result.suggested_urgency,
         nextStep: input.nextStep,
         ownerStaffId: input.ownerStaffId,
+        followupId,
       },
     });
 
@@ -644,5 +663,35 @@ export async function addCaseNote(caseId: string, note: string) {
     if (!note.trim()) throw new Error("The note is empty.");
     const item = await loadCase(db, caseId, staff.clinic_id);
     await recordCaseEvent(db, item, actor, { type: "note", note });
+  });
+}
+
+// ---- Clinician thread on a referral (clinic side) ----
+
+export async function addReferralNote(referralId: string, body: string) {
+  return attempt(async () => {
+    const { staff, db } = await requireLoopStaff();
+    assertAllowed(canProgressCases(staff.role), "Only clinical staff can write to the receiving clinician.");
+    const text = body.trim();
+    if (!text) throw new Error("Write a note first.");
+    if (text.length > 1000) throw new Error("Keep the note under 1,000 characters.");
+    const { data: referral, error } = await db
+      .from("referrals")
+      .select("id, clinic_id, case_id")
+      .eq("id", referralId)
+      .eq("clinic_id", staff.clinic_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!referral) throw new Error("Referral not found.");
+    const { data: clinic } = await db.from("clinics").select("name").eq("id", staff.clinic_id).single();
+    const { error: insertError } = await db.from("referral_messages").insert({
+      clinic_id: staff.clinic_id,
+      referral_id: referral.id,
+      author_side: "clinic",
+      author_name: `${staff.full_name} · ${clinic?.name ?? "Clinic"}`,
+      author_staff_id: staff.id,
+      body: text,
+    });
+    if (insertError) throw new Error(insertError.message);
   });
 }

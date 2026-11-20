@@ -15,7 +15,16 @@ export const STAFF_ROLES: StaffRole[] = ["admin", "doctor", "nurse", "receptioni
 export const PUBLIC_PATHS = new Set(["/", "/login"]);
 
 /** Public sections (and everything below them). */
-export const PUBLIC_PATH_PREFIXES = ["/diagnose", "/api/diagnose", "/r", "/referral"];
+export const PUBLIC_PATH_PREFIXES = [
+  "/diagnose",
+  "/api/diagnose",
+  "/r",
+  "/referral",
+  // Simulated patient phone (prototype; the action checks its link token).
+  "/wa-sim",
+  // Scheduler (checks its own shared secret).
+  "/api/safety-net/tick",
+];
 
 const PROTECTED_ROUTE_RULES: RouteAccessRule[] = [
   { pathPrefix: "/dashboard", roles: STAFF_ROLES },
@@ -24,6 +33,7 @@ const PROTECTED_ROUTE_RULES: RouteAccessRule[] = [
   { pathPrefix: "/queue/display", roles: STAFF_ROLES, module: "queue" },
   { pathPrefix: "/queue", roles: STAFF_ROLES, module: "queue" },
   { pathPrefix: "/cases", roles: STAFF_ROLES, module: "loop" },
+  { pathPrefix: "/followups", roles: ["doctor", "nurse"], module: "loop" },
   { pathPrefix: "/billing", roles: ["admin", "receptionist"], module: "billing" },
   { pathPrefix: "/dispensary", roles: ["admin", "doctor", "nurse"], module: "dispensary" },
   { pathPrefix: "/settings", roles: ["admin"] },

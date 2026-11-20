@@ -24,6 +24,7 @@ import {
   addCaseNote,
   advanceCase,
   closeCase,
+  addReferralNote,
   createReferral,
   logPatientContact,
   logReferralResponse,
@@ -139,13 +140,24 @@ export type CaseWorkspaceData = {
     viewed_at: string | null;
     reject_reason: string | null;
     appointment_on: string | null;
+    appointment_time: string | null;
+    appointment_place: string | null;
+    responded_at: string | null;
     outcome_note: string | null;
     attended_on: string | null;
     expires_at: string;
+    messages: Array<{ id: string; author_side: string; author_name: string; body: string; created_at: string }>;
   }>;
   staff: Array<{ id: string; full_name: string; role: string }>;
   referralDraft: string;
   referralSpecialty: string;
+  /** The safety-net follow-up this case continues, if any. */
+  followup?: {
+    id: string;
+    label: string;
+    steps: Array<{ key: string; label: string; at: string | null }>;
+    events: Array<{ id: string; label: string; at: string; actor: string; note: string | null }>;
+  } | null;
 };
 
 const EVENT_LABELS: Record<string, string> = {
@@ -230,7 +242,7 @@ export function CaseWorkspace({ data, staffRole }: { data: CaseWorkspaceData; st
         </div>
       </div>
 
-      <Stepper state={item.state} events={data.events} />
+      <Stepper state={item.state} events={data.events} followup={data.followup ?? null} />
 
       {needsDoctorDecision({ state: item.state, contactAttempts: item.contact_attempts }) ? (
         <Card className="border-destructive/40">
@@ -292,7 +304,7 @@ export function CaseWorkspace({ data, staffRole }: { data: CaseWorkspaceData; st
             </CardContent>
           </Card>
 
-          <Timeline events={data.events} />
+          <Timeline events={data.events} followup={data.followup ?? null} />
         </div>
 
         <div className="space-y-4">
@@ -318,11 +330,29 @@ type ActionProps = {
 };
 
 /** Steps the case actually passed through are ticked; steps it jumped over are shown as skipped. */
-function Stepper({ state, events }: { state: CaseState; events: CaseWorkspaceData["events"] }) {
+function Stepper({
+  state,
+  events,
+  followup,
+}: {
+  state: CaseState;
+  events: CaseWorkspaceData["events"];
+  followup: CaseWorkspaceData["followup"];
+}) {
   const current = stateIndex(state);
   const reached = new Set<string>(["triaged", ...events.map((event) => event.to_state).filter((value): value is string => !!value)]);
   return (
     <ol className="flex flex-wrap gap-1.5" aria-label="Case progress">
+      {followup?.steps.map((step) => (
+        <li
+          key={step.key}
+          className="flex items-center gap-1 rounded-full border border-amber-400 px-2.5 py-1 text-xs text-amber-900 dark:text-amber-200"
+          title={step.at ? `From the safety-net follow-up · ${formatClinicDateTime(step.at)}` : "From the safety-net follow-up"}
+        >
+          {step.at ? <Check className="h-3 w-3" /> : null}
+          {step.label}
+        </li>
+      ))}
       {CASE_STATES.map((step, index) => {
         const done = index < current && reached.has(step);
         const skipped = index < current && !reached.has(step);
@@ -348,15 +378,37 @@ function Stepper({ state, events }: { state: CaseState; events: CaseWorkspaceDat
   );
 }
 
-function Timeline({ events }: { events: CaseWorkspaceData["events"] }) {
+function Timeline({ events, followup }: { events: CaseWorkspaceData["events"]; followup: CaseWorkspaceData["followup"] }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-sm">Timeline</CardTitle>
-        <CardDescription>Every change to this case, oldest first.</CardDescription>
+        <CardDescription>
+          {followup ? (
+            <>
+              From the visit to closure, oldest first. The amber steps come from the{" "}
+              <Link href={`/followups/${followup.id}`} className="underline underline-offset-2">
+                safety-net follow-up ({followup.label})
+              </Link>
+              .
+            </>
+          ) : (
+            "Every change to this case, oldest first."
+          )}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ol className="space-y-4 border-l pl-4">
+          {followup?.events.map((event) => (
+            <li key={event.id} className="relative">
+              <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-amber-500 bg-background" />
+              <p className="text-sm font-medium">{event.label}</p>
+              <p className="text-xs text-muted-foreground">
+                {event.actor} · {formatClinicDateTime(event.at)}
+              </p>
+              {event.note ? <p className="mt-1 whitespace-pre-wrap text-sm">{event.note}</p> : null}
+            </li>
+          ))}
           {events.map((event) => (
             <li key={event.id} className="relative">
               <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-primary" />
@@ -649,9 +701,17 @@ function ReferralCard({ data, staffRole, isPending, run }: ActionProps) {
               Sent {formatClinicDate(referral.created_at)}
               {referral.viewed_at ? ` · viewed ${formatClinicDate(referral.viewed_at)}` : ""}
             </p>
-            {referral.appointment_on ? <p className="text-xs">Appointment {referral.appointment_on}</p> : null}
+            <ReferralSteps referral={referral} />
+            {referral.appointment_on ? (
+              <p className="rounded-md bg-muted/50 px-2 py-1 text-xs">
+                <span className="font-medium">Appointment</span> {referral.appointment_on}
+                {referral.appointment_time ? `, ${referral.appointment_time}` : ""}
+                {referral.appointment_place ? ` · ${referral.appointment_place}` : ""}
+              </p>
+            ) : null}
             {referral.reject_reason ? <p className="text-xs text-destructive">Declined: {referral.reject_reason}</p> : null}
             {referral.outcome_note ? <p className="text-xs">Outcome: {referral.outcome_note}</p> : null}
+            <ReferralThread referral={referral} canWrite={canProgressCases(staffRole)} isPending={isPending} run={run} />
             {canProgressCases(staffRole) && referral.status !== "attended" && referral.status !== "rejected" ? (
               <Button
                 size="xs"
@@ -783,6 +843,92 @@ function ReferralCard({ data, staffRole, isPending, run }: ActionProps) {
         </Dialog>
       </CardContent>
     </Card>
+  );
+}
+
+function ReferralSteps({ referral }: { referral: CaseWorkspaceData["referrals"][number] }) {
+  const declined = referral.status === "rejected";
+  const accepted = ["accepted", "booked", "attended"].includes(referral.status);
+  const steps = [
+    { label: "Sent", done: true, at: referral.created_at },
+    { label: "Viewed", done: !!referral.viewed_at, at: referral.viewed_at },
+    declined
+      ? { label: "Declined", done: true, at: referral.responded_at }
+      : { label: "Accepted", done: accepted, at: accepted ? referral.responded_at : null },
+    ...(declined ? [] : [{ label: "Booked", done: !!referral.appointment_on, at: null as string | null }]),
+    ...(declined ? [] : [{ label: "Attended", done: referral.status === "attended", at: null as string | null }]),
+  ];
+  return (
+    <ol className="flex flex-wrap items-center gap-1 py-1 text-[11px]" aria-label="Referral progress">
+      {steps.map((step, index) => (
+        <li key={step.label} className="flex items-center gap-1">
+          {index > 0 ? <span className="h-px w-3 bg-border" aria-hidden="true" /> : null}
+          <span
+            className={cn(
+              "rounded-full border px-2 py-0.5",
+              step.done ? (step.label === "Declined" ? "border-destructive text-destructive" : "border-primary/40 bg-primary/5 text-primary") : "text-muted-foreground"
+            )}
+            title={step.at ? formatClinicDateTime(step.at) : undefined}
+          >
+            {step.label}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function ReferralThread({
+  referral,
+  canWrite,
+  isPending,
+  run,
+}: {
+  referral: CaseWorkspaceData["referrals"][number];
+  canWrite: boolean;
+  isPending: boolean;
+  run: ActionProps["run"];
+}) {
+  const [body, setBody] = useState("");
+  return (
+    <div className="space-y-1.5 pt-1">
+      <p className="text-xs font-medium">Clinician thread</p>
+      {referral.messages.length === 0 ? <p className="text-xs text-muted-foreground">No notes yet.</p> : null}
+      {referral.messages.map((message) => (
+        <div
+          key={message.id}
+          className={cn(
+            "rounded-md px-2.5 py-1.5 text-xs",
+            message.author_side === "receiver" ? "bg-amber-50 dark:bg-amber-950/60" : "bg-muted/60"
+          )}
+        >
+          <p className="font-medium">
+            {message.author_name} · {formatClinicDateTime(message.created_at)}
+          </p>
+          <p className="whitespace-pre-wrap">{message.body}</p>
+        </div>
+      ))}
+      {canWrite ? (
+        <div className="flex gap-1.5">
+          <Input
+            className="h-8 text-xs"
+            maxLength={1000}
+            placeholder="Write to the receiving clinician"
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8"
+            disabled={isPending || !body.trim()}
+            onClick={() => run(() => addReferralNote(referral.id, body), "Note sent", () => setBody(""))}
+          >
+            Send
+          </Button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

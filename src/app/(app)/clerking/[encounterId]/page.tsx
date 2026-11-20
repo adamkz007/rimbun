@@ -19,7 +19,7 @@ export default async function ClerkingPage({ params }: { params: Promise<{ encou
     .from("encounters")
     .select(`
       *,
-      patients(id, full_name, mrn, date_of_birth, gender, allergies, phone),
+      patients(id, full_name, mrn, date_of_birth, gender, allergies, phone, preferred_language, messaging_consent_at),
       doctor:doctor_id(id, full_name),
       completed_by_staff:completed_by(full_name),
       amendment_started_by_staff:amendment_started_by(full_name),
@@ -50,7 +50,8 @@ export default async function ClerkingPage({ params }: { params: Promise<{ encou
     .neq("id", encounterId)
     .order("encounter_date", { ascending: false });
 
-  const { data: openFollowUps } = isModuleEnabled(staff.clinics?.settings, "loop")
+  const loopEnabled = isModuleEnabled(staff.clinics?.settings, "loop");
+  const { data: openFollowUps } = loopEnabled
     ? await supabase
         .from("result_cases")
         .select("id, state, test_code")
@@ -58,6 +59,16 @@ export default async function ClerkingPage({ params }: { params: Promise<{ encou
         .neq("state", "closed")
         .order("opened_at", { ascending: false })
     : { data: [] };
+
+  const { data: safetyNetRow } = loopEnabled
+    ? await supabase
+        .from("safety_net_followups")
+        .select("id, state, protocol_code, checkin_due_at")
+        .eq("encounter_id", encounterId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
 
   const workspace = (
     <ClerkingWorkspace
@@ -68,6 +79,25 @@ export default async function ClerkingPage({ params }: { params: Promise<{ encou
         fullName: staff.full_name,
         role: staff.role,
       }}
+      safetyNet={
+        loopEnabled
+          ? {
+              patient: {
+                phone: encounter.patients?.phone ?? null,
+                preferredLanguage: encounter.patients?.preferred_language === "ms" ? "ms" : "en",
+                hasConsent: Boolean(encounter.patients?.messaging_consent_at),
+              },
+              current: safetyNetRow
+                ? {
+                    id: safetyNetRow.id,
+                    state: safetyNetRow.state,
+                    protocolCode: safetyNetRow.protocol_code,
+                    checkinDueAt: safetyNetRow.checkin_due_at,
+                  }
+                : null,
+            }
+          : null
+      }
     />
   );
 

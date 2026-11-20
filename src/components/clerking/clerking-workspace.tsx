@@ -14,6 +14,7 @@ import { EncounterHistory } from "./encounter-history";
 import { DiagnosisPicker } from "./diagnosis-picker";
 import { PrescriptionForm } from "./prescription-form";
 import { ScratchpadCanvas } from "./scratchpad-canvas";
+import { SafetyNetPanel, type SafetyNetPanelData } from "@/components/safety-net/safety-net-panel";
 import {
   completeEncounter,
   saveNote,
@@ -67,10 +68,13 @@ export function ClerkingWorkspace({
   encounter,
   historyEncounters,
   currentStaff,
+  safetyNet,
 }: {
   encounter: EncounterWithRelations;
   historyEncounters: EncounterHistoryItems;
   currentStaff: CurrentStaff;
+  /** Present when Care Loop is on: the safety-net follow-up panel. */
+  safetyNet?: SafetyNetPanelData | null;
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ClerkingTab>("chief_complaint");
@@ -293,6 +297,15 @@ export function ClerkingWorkspace({
           initialVitals={initialVitals}
           disabled={isReadOnly}
         />
+
+        {safetyNet ? (
+          <SafetyNetPanel
+            encounterId={encounter.id}
+            data={safetyNet}
+            isDoctor={isDoctor}
+            beforeSuggest={canEditEncounter ? () => persistEncounterDrafts(encounter.id) : undefined}
+          />
+        ) : null}
 
         {/* Complete Button */}
         {canEditEncounter && (
